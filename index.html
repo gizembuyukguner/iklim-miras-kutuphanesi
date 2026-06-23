@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>İklim Miras Dijital Kütüphanesi — ICOMOS Türkiye</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+  :root{
+    --ink:#16222e; --muted:#7c8a99; --paper:#f7f5f0; --panel:#ffffff;
+    --line:#e6e0d4; --accent:#1f5673;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%; background:var(--paper); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; overflow:hidden;
+    overscroll-behavior:none; -webkit-text-size-adjust:100%;}
+  #app{display:flex; flex-direction:column; height:100vh; height:100dvh;}
+
+  header{padding:18px 26px 14px; border-bottom:1px solid var(--line); background:var(--paper); z-index:5;}
+  .eyebrow{font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:var(--accent); margin:0 0 5px; font-weight:600;}
+  h1{font-family:'Georgia',serif; font-size:clamp(20px,2.6vw,30px); margin:0; font-weight:600; letter-spacing:-.01em;}
+  .lead{font-size:13.5px; color:var(--muted); margin:6px 0 0; max-width:680px; line-height:1.45;}
+
+  .stage{flex:1; position:relative; overflow:hidden;}
+  svg#net{width:100%; height:100%; display:block; cursor:grab; touch-action:none;}
+  svg#net:active{cursor:grabbing;}
+
+  .legend{position:absolute; top:14px; left:14px; background:rgba(255,255,255,.92);
+    border:1px solid var(--line); border-radius:10px; padding:12px 14px; max-width:230px;
+    backdrop-filter:blur(6px); box-shadow:0 4px 18px rgba(20,40,60,.07);}
+  .legend h4{margin:0 0 9px; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);}
+  .leg-item{display:flex; align-items:center; gap:8px; font-size:12.5px; padding:3px 0; cursor:pointer; border-radius:5px; transition:.1s;}
+  .leg-item:hover{color:var(--accent);}
+  .leg-item.dim{opacity:.35;}
+  .dot{width:11px; height:11px; border-radius:50%; flex:0 0 auto;}
+  .leg-count{margin-left:auto; font-size:11px; color:var(--muted);}
+
+  .hint{position:absolute; bottom:14px; left:14px; font-size:11.5px; color:var(--muted);
+    background:rgba(255,255,255,.85); border:1px solid var(--line); border-radius:8px; padding:7px 11px;}
+  .hint b{color:var(--ink); font-weight:600;}
+
+  .search{position:absolute; top:14px; right:14px; z-index:7; width:264px;}
+  .search-bar{display:flex; gap:7px;}
+  .search input{flex:1; width:100%; padding:9px 13px; font-size:13px; border:1px solid var(--line);
+    border-radius:8px; background:rgba(255,255,255,.95); outline:none;}
+  .search input:focus{border-color:var(--accent);}
+  .adv-toggle{flex:0 0 auto; display:flex; align-items:center; gap:5px; padding:0 11px;
+    font-size:12.5px; font-weight:600; color:var(--accent); background:rgba(255,255,255,.95);
+    border:1px solid var(--line); border-radius:8px; cursor:pointer;}
+  .adv-toggle:hover{border-color:var(--accent);}
+  .adv-toggle svg{width:11px; height:11px; transition:transform .2s;}
+  .adv-toggle.open svg{transform:rotate(180deg);}
+  .adv-count{background:var(--accent); color:#fff; font-size:10.5px; min-width:16px; height:16px;
+    padding:0 4px; border-radius:8px; display:none; align-items:center; justify-content:center;}
+  .adv-count.show{display:inline-flex;}
+
+  .adv-panel{margin-top:8px; background:rgba(255,255,255,.97); border:1px solid var(--line);
+    border-radius:10px; box-shadow:0 8px 26px rgba(20,40,60,.12); backdrop-filter:blur(6px);
+    padding:0 14px; max-height:0; overflow:hidden; opacity:0; transition:max-height .25s ease, opacity .2s, padding .25s;}
+  .adv-panel.open{max-height:78vh; opacity:1; overflow-y:auto; padding:14px;}
+  .adv-grp{margin-bottom:14px;}
+  .adv-grp:last-child{margin-bottom:0;}
+  .adv-grp h5{margin:0 0 8px; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);}
+  .type-quick{display:flex; gap:6px; margin-bottom:9px;}
+  .type-quick button{flex:1; font-size:11.5px; padding:5px; border:1px solid var(--line);
+    background:var(--paper); border-radius:6px; cursor:pointer; color:#475563;}
+  .type-quick button:hover{border-color:var(--accent); color:var(--accent);}
+  .type-list{display:flex; flex-direction:column; gap:2px;}
+  .type-item{display:flex; align-items:center; gap:8px; font-size:13px; padding:5px 7px;
+    border-radius:6px; cursor:pointer; transition:.1s;}
+  .type-item:hover{background:var(--paper);}
+  .type-item input{width:15px; height:15px; accent-color:var(--accent); cursor:pointer; margin:0;}
+  .type-item .tdot{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
+  .type-item .tname{flex:1;}
+  .type-item .tcount{font-size:11px; color:var(--muted);}
+  .year-row{display:flex; align-items:center; gap:8px;}
+  .year-row select{flex:1; font-size:13px; padding:7px 9px; border:1px solid var(--line);
+    border-radius:7px; background:var(--paper); cursor:pointer;}
+  .year-row span{font-size:12px; color:var(--muted);}
+  .adv-foot{display:flex; justify-content:space-between; align-items:center; padding-top:4px; border-top:1px solid var(--line); margin-top:4px;}
+  .adv-result{font-size:12px; color:var(--muted);}
+  .adv-clear{font-size:12.5px; color:var(--accent); background:none; border:none; cursor:pointer; text-decoration:underline; padding:4px 0;}
+
+  /* Detail panel */
+  .panel{position:absolute; top:0; right:0; height:100%; width:360px; max-width:88vw;
+    background:var(--panel); border-left:1px solid var(--line); box-shadow:-8px 0 30px rgba(20,40,60,.1);
+    transform:translateX(100%); transition:transform .28s cubic-bezier(.4,0,.2,1); z-index:8;
+    display:flex; flex-direction:column;}
+  .panel.open{transform:translateX(0);}
+  .panel-head{padding:20px 22px 14px; border-bottom:1px solid var(--line);}
+  .panel-tag{display:inline-block; font-size:11px; font-weight:600; color:#fff; padding:3px 10px; border-radius:5px; margin-bottom:10px;}
+  .panel-year{font-size:13px; color:var(--muted); font-weight:600; float:right;}
+  .panel-title{font-family:'Georgia',serif; font-size:18px; line-height:1.32; margin:0;}
+  .panel-body{padding:18px 22px; overflow-y:auto; flex:1;}
+  .panel-row{margin-bottom:15px;}
+  .panel-row .k{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:4px;}
+  .panel-row .v{font-size:14px; line-height:1.45;}
+  .theme-pill{display:inline-block; font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--line); margin:3px 5px 0 0; color:#333;}
+  .panel-link{display:inline-flex; align-items:center; gap:6px; margin-top:6px; font-size:14px; font-weight:600;
+    color:#fff; background:var(--accent); padding:10px 16px; border-radius:8px; text-decoration:none;}
+  .panel-link:hover{background:#143a4d;}
+  .panel-close{position:absolute; top:14px; right:14px; background:none; border:none; font-size:22px;
+    color:var(--muted); cursor:pointer; line-height:1; z-index:9;}
+  .panel-close:hover{color:var(--ink);}
+
+  .node-label{font-family:'Georgia',serif; pointer-events:none; fill:var(--ink); font-weight:600;}
+  .tip{position:absolute; pointer-events:none; background:var(--ink); color:#fff; font-size:12px;
+    padding:6px 10px; border-radius:6px; max-width:260px; opacity:0; transition:opacity .1s; z-index:10; line-height:1.35;}
+
+  /* Legend collapse toggle (mobile) */
+  .legend-toggle{display:none;}
+
+  @media(max-width:760px){
+    header{padding:12px 16px 10px;}
+    .eyebrow{font-size:9.5px; letter-spacing:.16em; margin-bottom:3px;}
+    h1{font-size:19px;}
+    .lead{display:none;}
+
+    /* Search becomes a full-width top bar */
+    .search{position:absolute; top:10px; left:10px; right:10px; width:auto;}
+    .search input{font-size:16px;}
+    .adv-panel.open{max-height:62vh;}
+
+    /* Legend turns into a collapsible bottom sheet */
+    .legend{top:auto; bottom:0; left:0; right:0; max-width:none; border-radius:14px 14px 0 0;
+      border-left:none; border-right:none; border-bottom:none; padding:0 16px;
+      max-height:46px; overflow:hidden; transition:max-height .28s ease, padding .28s;}
+    .legend.expanded{max-height:50vh; overflow-y:auto; padding:0 16px 16px;
+      padding-bottom:calc(16px + env(safe-area-inset-bottom));}
+    .legend-toggle{display:flex; align-items:center; justify-content:space-between;
+      padding:14px 0 12px; cursor:pointer; font-size:11px; letter-spacing:.1em;
+      text-transform:uppercase; color:var(--muted); position:sticky; top:0; background:rgba(255,255,255,.96);}
+    .legend-toggle svg{width:14px; height:14px; transition:transform .25s; stroke:var(--muted);}
+    .legend.expanded .legend-toggle svg{transform:rotate(180deg);}
+    .legend h4{display:none;}
+    .leg-item{padding:9px 6px; font-size:14px;}
+    .leg-item .dot{width:13px; height:13px;}
+
+    /* Hint hidden on mobile (gestures differ) */
+    .hint{display:none;}
+
+    /* Detail panel full width */
+    .panel{width:100%; max-width:100%;}
+    .panel-head{padding:46px 18px 14px;}
+    .panel-close{top:12px; right:14px; font-size:30px; width:40px; height:40px;}
+    .panel-link{padding:13px 18px; font-size:15px;}
+
+    /* Bigger touch targets in adv panel */
+    .type-item{padding:9px 7px; font-size:14px;}
+    .type-item input{width:18px; height:18px;}
+    .adv-toggle{padding:0 13px;}
+  }
+
+  @media(max-width:400px){
+    h1{font-size:17px;}
+    .search input{font-size:16px;} /* 16px stops iOS auto-zoom on focus */
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <p class="eyebrow">ICOMOS Türkiye · COP31 · İklim ve Kültürel Miras</p>
+    <h1>İklim Miras Dijital Kütüphanesi</h1>
+    <p class="lead">İklim değişikliği ile kültürel miras kesişiminde üretilmiş kaynakların tematik ağı. Her nokta bir kaynağı, her büyük halka bir izleği temsil eder. Bir izleğe tıklayarak o kümeyi öne çıkarın, bir kaynağa tıklayarak ayrıntılarını görün.</p>
+  </header>
+  <div class="stage">
+    <svg id="net"></svg>
+    <div class="legend" id="legend">
+      <div class="legend-toggle" id="legendToggle">
+        <span>İzlekler</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M18 15l-6-6-6 6"/></svg>
+      </div>
+      <h4>İzlekler</h4>
+    </div>
+    <div class="search">
+      <div class="search-bar">
+        <input id="q" type="text" placeholder="Kaynak ara…" autocomplete="off">
+        <button class="adv-toggle" id="advToggle">
+          Filtre <span class="adv-count" id="advCount">0</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </div>
+      <div class="adv-panel" id="advPanel">
+        <div class="adv-grp">
+          <h5>Kaynak Türü</h5>
+          <div class="type-quick">
+            <button id="typeAll">Tümünü seç</button>
+            <button id="typeNone">Hiçbiri</button>
+          </div>
+          <div class="type-list" id="typeList"></div>
+        </div>
+        <div class="adv-grp">
+          <h5>Yıl Aralığı</h5>
+          <div class="year-row">
+            <select id="yearMin"></select>
+            <span>–</span>
+            <select id="yearMax"></select>
+          </div>
+        </div>
+        <div class="adv-foot">
+          <span class="adv-result" id="advResult"></span>
+          <button class="adv-clear" id="advClear">Temizle</button>
+        </div>
+      </div>
+    </div>
+    <div class="hint"><b>Tıkla</b> sabitle · <b>Sürükle</b> gezin · <b>Kaydır</b> yakınlaş</div>
+    <div class="tip" id="tip"></div>
+    <aside class="panel" id="panel">
+      <button class="panel-close" id="panelClose">&times;</button>
+      <div class="panel-head">
+        <span class="panel-year" id="pYear"></span>
+        <span class="panel-tag" id="pTag"></span>
+        <h3 class="panel-title" id="pTitle"></h3>
+      </div>
+      <div class="panel-body" id="pBody"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+const DATA = [{"baslik": "The Future of Our Pasts: Engaging Cultural Heritage in Climate Action", "baslikTr": "", "yazar": "ICOMOS", "danisman": "", "yil": "2019", "tur": "Rapor", "link": "https://publ.icomos.org/publicomos/jlbSai?html=Pag&page=Pml/Not&base=technica&ref=97C800C028DD1FFC1CE7E96E3E802182", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Policy Document on Climate Action for World Heritage", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2023", "tur": "Politika Belgesi", "link": "https://whc.unesco.org/en/climatechange", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "Global Research and Action Agenda on Culture, \nHeritage, and Climate Change", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2022", "tur": "Rapor", "link": "https://publ.icomos.org/publicomos/jlbSai?html=Pag&page=Pml/Not&base=technica&ref=475809815DAC589B05B429805A77D61B", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Impacts of Climate Change on World Heritage Coral Reefs", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2018", "tur": "Rapor", "link": "Impacts of climate change on World Heritage coral reefs: update to the first global scientific assessment - UNESCO Digital Library", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "UNESCO Marine World Heritage Custodians of \nthe globe's blue carbon assets", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2021", "tur": "Rapor", "link": "https://unesdoc.unesco.org/ark:/48223/pf0000375565.locale=en", "temalar": ["Enerji ve Karbon"]}, {"baslik": "World heritage glaciers: sentinels of climate change", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2022", "tur": "Rapor", "link": "https://unesdoc.unesco.org/ark:/48223/pf0000383551.locale=en", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "World Heritage forests: carbon sinks under pressure", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2021", "tur": "Rapor", "link": "https://unesdoc.unesco.org/ark:/48223/pf0000379527.locale=en", "temalar": ["Enerji ve Karbon", "Ekosistem ve Peyzaj"]}, {"baslik": "World Heritage: A unique contribution to biodiversity", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2023", "tur": "Rapor", "link": "https://unesdoc.unesco.org/ark:/48223/pf0000385392.locale=en", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Dünya Mirası Bağlamında Etki Değerlendirmesi Kılavuzu ve Araçları", "baslikTr": "Dünya Mirası Bağlamında Etki Değerlendirmesi Kılavuzu ve Araçları", "yazar": "UNESCO", "danisman": "", "yil": "2026", "tur": "Rapor", "link": "https://unesdoc.unesco.org/ark:/48223/pf0000398373", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "Culture and Climate Action: From Margins to Mainstream", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2025", "tur": "Rapor", "link": "https://www.unesco.org/sites/default/files/medias/fichiers/2026/01/395681eng.pdf?hub=761", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Intangible cultural heritage safeguarding and climate \naction in Asia and the Pacific", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2025", "tur": "Rapor", "link": "https://unesdoc.unesco.org/ark:/48223/pf0000394981", "temalar": ["Somut Olmayan Miras"]}, {"baslik": "Climate change in Mediterranean World Heritage Cities", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2025", "tur": "Rapor", "link": "https://www.unesco.org/sites/default/files/medias/fichiers/2026/01/394251eng.pdf?hub=761", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Integration of climate action and the Sustainable \nDevelopment Goals in World Heritage sites", "baslikTr": "", "yazar": "ICOMOS", "danisman": "", "yil": "2021", "tur": "Rapor", "link": "https://publ.icomos.org/publicomos/jlbSai?html=Pag&page=Pml/Not&base=technica&ref=0BEE3FB9C3D851EB2E59C3D14DBCA7B0", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Climate Justice and Equality Toolkit: \nHeritage, Climate Justice and Equity", "baslikTr": "", "yazar": "ICOMOS", "danisman": "", "yil": "2011", "tur": "Rapor", "link": "https://admin.icomos.org/wp-content/uploads/2022/04/Heritage_Climate_Justice_and_Equity-English.pdf", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Climate Change Adaptation Guide: Climate Change Adaptation", "baslikTr": "", "yazar": "ICOMOS", "danisman": "", "yil": "2022", "tur": "Rapor", "link": "https://admin.icomos.org/wp-content/uploads/2025/03/CAWG-adaptation-english.pdf", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "19GA 2017/01: Mobilizing ICOMOS and the cultural heritage \ncommunity to help meet the challenge of climate change", "baslikTr": "", "yazar": "ICOMOS", "danisman": "", "yil": "2017", "tur": "Politika Belgesi", "link": "https://admin.icomos.org/wp-content/uploads/2019/12/GA2017_Resolutions_EN_20180206finalcirc.pdf", "temalar": ["Göç ve Toplum"]}, {"baslik": "Policy Document on the Impacts of\nClimate Change on World Heritage Properties", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2008", "tur": "Politika Belgesi", "link": "https://whc.unesco.org/document/10045", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "World Heritage reports 22: Climate Change and World Heritage", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2007", "tur": "Rapor", "link": "https://whc.unesco.org/uploads/activities/documents/activity-474-1.pdf", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Case Studies on Climate Change and World Heritage", "baslikTr": "", "yazar": "UNESCO", "danisman": "", "yil": "2009", "tur": "Rapor", "link": "https://whc.unesco.org/en/activities/473/", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "İKLİM KRİZİNDE DAYANIKLILIK İÇİN KAYNAK OLARAK MİRAS \nARASTIRMA RAPORU", "baslikTr": "", "yazar": "Tarihi Kentler Birligi", "danisman": "", "yil": "2022", "tur": "Rapor", "link": "https://www.tarihikentlerbirligi.org/wp-content/uploads/Dayaniklilik-Icin-Kaynak-Olarak-Miras.pdf", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "European cultural heritage green paper “Putting Europe’s shared \nheritage at the heart of the European Green Deal", "baslikTr": "", "yazar": "Europa Nostra / ICOMOS", "danisman": "", "yil": "2021", "tur": "Rapor", "link": "https://publ.icomos.org/publicomos/jlbSai?html=Pag&page=Pml/Not&base=technica&ref=F359E32BB5DA2061976BE7D340C5A2B1", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Assessing the Energy Conservation Benefits of Historic \nPreservation: Methods and Examples", "baslikTr": "", "yazar": "Advisory Council on \nHistoric Preservation", "danisman": "", "yil": "1979", "tur": "Rapor", "link": "https://www.achp.gov/digital-library-section-106-landing/assessing-energy-conservation-benefits-historic-preservation", "temalar": ["Enerji ve Karbon"]}, {"baslik": "UNITED NATIONS FRAMEWORK CONVENTION ON CLIMATE CHANGE", "baslikTr": "", "yazar": "UNFCCC/COP", "danisman": "", "yil": "1992", "tur": "Politika Belgesi", "link": "https://unfccc.int/files/essential_background/background_publications_htmlpdf/application/pdf/conveng.pdf", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "KYOTO PROTOCOL TO THE UNITED NATIONS FRAMEWORK\nCONVENTION ON CLIMATE CHANGE", "baslikTr": "", "yazar": "UNFCC/COP3", "danisman": "", "yil": "1997", "tur": "Politika Belgesi", "link": "https://treaties.un.org/doc/Treaties/1998/09/19980921%2004-41%20PM/Ch_XXVII_07_ap.pdf", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "The British Council Strategic Literature Review: Climate Change \nImpacts on Cultural Heritage", "baslikTr": "", "yazar": "British Council/Triple Line", "danisman": "", "yil": "2023", "tur": "Rapor", "link": "https://www.britishcouncil.org/sites/default/files/climate_change_impacts_on_cultural_heritage_report.pdf", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Short Guide: Climate Change Adaptation for Traditional Buildings", "baslikTr": "", "yazar": "Historic Environment Scotland", "danisman": "", "yil": "2017", "tur": "Rapor", "link": "https://www.historicenvironment.scot/publications/all/publication/?publicationId=a0138f5b-c173-4e09-818f-a7ac00ad04fb", "temalar": ["Geleneksel / Yerel Mimari", "Risk ve Kırılganlık"]}, {"baslik": "Climate Change Adaptation Manual for Heritage Tourism", "baslikTr": "", "yazar": "Historic Environment Scotland", "danisman": "", "yil": "2025", "tur": "Rapor", "link": "https://www.historicenvironment.scot/publications/all/publication/?publicationId=36f510ff-3ef2-4329-9d2b-b39900ab339b", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "Climate Ready HES", "baslikTr": "", "yazar": "Historic Environment Scotland", "danisman": "", "yil": "2021", "tur": "Rapor", "link": "https://www.historicenvironment.scot/publications/all/publication/?publicationId=ff08ad2c-0046-43d5-89a3-ade200e2cdee", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Climate Change Case Studies", "baslikTr": "", "yazar": "Historic Environment Scotland", "danisman": "", "yil": "2025", "tur": "Rapor", "link": "https://www.historicenvironment.scot/publications/all/publication/?publicationId=717e5d81-741d-4f70-88fc-b2ad00fdcea3", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Climate Change Risk Assessment", "baslikTr": "", "yazar": "Historic Environment Scotland", "danisman": "", "yil": "2018", "tur": "Rapor", "link": "https://www.historicenvironment.scot/publications/all/publication/?publicationId=55d8dde6-3b68-444e-b6f2-a866011d129a", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "GUIDE TO ENERGY RETROFIT OF TRADITIONAL BUILDINGS", "baslikTr": "", "yazar": "Historic Environment Scotland", "danisman": "", "yil": "2021", "tur": "Rapor", "link": "https://media.methodist.org.uk/media/documents/energy-retrofit-short-guide-2021-1_9nCpae1.pdf", "temalar": ["Geleneksel / Yerel Mimari", "Enerji ve Karbon"]}, {"baslik": "Improving Energy Efficiency in Traditional Buildings", "baslikTr": "", "yazar": "Department of Housing, Local \nGovernment and Heritage", "danisman": "", "yil": "2023", "tur": "Rapor", "link": "https://www.seai.ie/sites/default/files/documents/Energy_Efficiency_in_Traditional_Buildings.pdf", "temalar": ["Geleneksel / Yerel Mimari", "Enerji ve Karbon"]}, {"baslik": "Managing Change in the Historic Environment: Gardens and \nDesigned Landscapes", "baslikTr": "", "yazar": "Historic Environment Scotland", "danisman": "", "yil": "2020", "tur": "Rapor", "link": "https://www.historicenvironment.scot/publications/all/publication/?publicationId=83214207-c4e7-4f80-af87-a678009820b9", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Managing Change in the Historic Environment: Setting", "baslikTr": "", "yazar": "Historic Environment Scotland", "danisman": "", "yil": "2020", "tur": "Rapor", "link": "https://www.historicenvironment.scot/publications/all/publication/?publicationId=80b7c0a0-584b-4625-b1fd-a60b009c2549", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Intangible cultural heritage, diverse knowledge systems and \nclimate change", "baslikTr": "", "yazar": "ICOMOS / ISCM CHC", "danisman": "", "yil": "2022", "tur": "Rapor", "link": "https://publ.icomos.org/publicomos/jlbSai?html=Pag&page=Pml/Not&base=technica&ref=93E63E4E277BDFBD5FDBD3FB1CEE4721", "temalar": ["Somut Olmayan Miras"]}, {"baslik": "Impacts, vulnerability, and understanding risks of climate change \nfor culture and heritage", "baslikTr": "", "yazar": "ICOMOS / ISCM CHC", "danisman": "", "yil": "2022", "tur": "Rapor", "link": "https://publ.icomos.org/publicomos/jlbSai?html=Pag&page=Pml/Not&base=technica&ref=99D56F4806036D87925EE77250810C11", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "The role of cultural and natural heritage for climate action", "baslikTr": "", "yazar": "ICOMOS / ISCM CHC", "danisman": "", "yil": "2022", "tur": "Rapor", "link": "https://publ.icomos.org/publicomos/jlbSai?html=Pag&page=Pml/Not&base=technica&ref=BD34B7345F5DFE91548711B144F1248B", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "VerSus : lessons from vernacular heritage to sustainable \narchitecture", "baslikTr": "", "yazar": "Grenoble", "danisman": "", "yil": "2014", "tur": "Rapor", "link": "https://publ.icomos.org/publicomos/jlbSai?html=Pag&page=Pml/Not&base=technica&ref=1FF22FA771DF733A7C63DBBFF03BD4E7", "temalar": ["Geleneksel / Yerel Mimari"]}, {"baslik": "VERSUS: Heritage for Tomorrow\nVernacular Knowledge for Sustainable Architecture", "baslikTr": "", "yazar": "Mariana Correia, Letizia Dipasquale,\nSaverio Mecca", "danisman": "", "yil": "2014", "tur": "Kitap", "link": "https://books.fupress.com/catalogue/versus-heritage-for-tomorrow/2920", "temalar": ["Geleneksel / Yerel Mimari"]}, {"baslik": "Impacts of Climate Change on Vernacular Landscapes and Cultural Heritage", "baslikTr": "", "yazar": "Gül Aktürk", "danisman": "", "yil": "2026", "tur": "Kitap", "link": "https://www.routledge.com/Impacts-of-Climate-Change-on-Vernacular-Landscapes-and-Cultural-Heritage/Akturk/p/book/9781032433189", "temalar": ["Geleneksel / Yerel Mimari", "Ekosistem ve Peyzaj"]}, {"baslik": "İklim Değişikliği ve Tarihi Çevre", "baslikTr": "", "yazar": "Ed. Eti Akyüz Levi", "danisman": "", "yil": "2024", "tur": "Kitap", "link": "https://egeyayinlari.com.tr/urun/Iklim-Degisikligi-ve-Tarihi-Cevre-525", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Türkiye Kıyılarında Deniz Seviyesinin Yükselmesinin Kültürel Mirasa Potansiyel Etkileri", "baslikTr": "", "yazar": "Ceylan İrem Gençer", "danisman": "", "yil": "2021", "tur": "Kitap", "link": "https://www.academia.edu/67252054/Tu_rkiye_K%C4%B1y%C4%B1lar%C4%B1nda_Deniz_Seviyesinin_Yu_kselmesinin_Ku_ltu_rel_Mirasa_Potansiyel_Etkileri", "temalar": ["Deniz Seviyesi ve Kıyı", "Sel ve Taşkın"]}, {"baslik": "Kültürel Miras ve Çevresel Sürdürülebilirlik: İklim Değişikliğinin Kültürel Miras Üzerindeki Etkileri", "baslikTr": "", "yazar": "Makbule Şiriner Önver, Günay Gönüllü", "danisman": "", "yil": "2025", "tur": "Kitap Bölümü", "link": "https://www.researchgate.net/profile/Sidar-Simsek/publication/399625160_Sosyal_Bilimlerde_Guncel_Paradigmalar_ve_Uygulama_Pratikleri/links/696178f221a46d6f701e5306/Sosyal-Bilimlerde-Guencel-Paradigmalar-ve-Uygulama-Pratikleri.pdf#page=10", "temalar": ["Sel ve Taşkın"]}, {"baslik": "Global Climate Change and Challenges that They Present for the \nCultural Heritage with Particular Reference to Türkiye", "baslikTr": "", "yazar": "Bülent Arikan", "danisman": "", "yil": "2026", "tur": "Kitap Bölümü", "link": "https://www.researchgate.net/publication/399986261_Global_Climate_Change_and_Challenges_that_They_Present_for_the_Cultural_Heritage_with_Particular_Reference_to_Turkiye", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Detection of Disaster-Prone Vernacular Heritage Sites at District Scale: The Case of Fındıklı in Rize, Turkey", "baslikTr": "", "yazar": "Gül Aktürk, S.J. Hauser", "danisman": "", "yil": "2021", "tur": "Makale", "link": "https://www.sciencedirect.com/science/article/pii/S2212420921002041", "temalar": ["Geleneksel / Yerel Mimari", "Risk ve Kırılganlık"]}, {"baslik": "Vernacular Heritage as a Response to Climate: Lessons for Future Climate Resilience from Rize, Turkey", "baslikTr": "", "yazar": "Gül Aktürk, Hannah Fluck", "danisman": "", "yil": "2022", "tur": "Makale", "link": "https://www.mdpi.com/2073-445X/11/2/276", "temalar": ["Kentsel Dayanıklılık", "Geleneksel / Yerel Mimari"]}, {"baslik": "İklim Krizi Karşısında Kırsal Mirastan Alınabilecek Dersler", "baslikTr": "", "yazar": "Koray Güler, Zeynep Eres", "danisman": "", "yil": "2022", "tur": "Makale", "link": "https://www.researchgate.net/publication/364350459_Iklim_Krizi_ve_Kulturel_Miras", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "İklim Krizi ve Kültürel Mirasın Korunması Konusunda Uluslararası Yaklaşımlar", "baslikTr": "", "yazar": "C. İrem Gençer", "danisman": "", "yil": "2022", "tur": "Makale", "link": "https://mimaristdergi.org/storage/upload/pdfs/1733754959-tr.pdf", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Kültürel Mirasın Korunmasında İklim Değişikliğinin Oluşturduğu Tehditler", "baslikTr": "", "yazar": "Nilgün Çolpan Erkan, Aylin Akçabozan, Mustafa Sayan", "danisman": "", "yil": "2017", "tur": "Makale", "link": "https://www.academia.edu/32400541/Ku_ltu_rel_Miras%C4%B1n_Korunmas%C4%B1nda_%C4%B0klim_De%C4%9Fi%C5%9Fikli%C4%9Finin_Olu%C5%9Fturdu%C4%9Fu_Tehditler", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "İklim Değişikliği Karşısında Kültürel Mirasın Etkilenebilirliği", "baslikTr": "", "yazar": "Merve Deniz Demirel, Nur Umar", "danisman": "", "yil": "2023", "tur": "Makale", "link": "https://dergipark.org.tr/en/download/article-file/2740202", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "İklim Değişikliğinin Kültürel Miras Üzerindeki Risk Değerlendirmeleri: Edirne Örneği", "baslikTr": "", "yazar": "Banu Gökmen Erdoğan", "danisman": "", "yil": "2022", "tur": "Makale", "link": "https://mimaristdergi.org/storage/upload/pdfs/1733755170-tr.pdf", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "KÜRESEL İKLİM DEĞİŞİKLİĞİNİN OLUMLU VE OLUMSUZ DIŞSALLIKLARI ÜZERİNE BİR DEĞERLENDİRME", "baslikTr": "", "yazar": "Esra HANBAY KAHRİMAN", "danisman": "", "yil": "2020", "tur": "Makale", "link": "https://pdf.trdizin.gov.tr/pdf/dFVBbHVITkJ2dlBPeng0ZThGU0ZLR0lLUEc4eVhPWm95SUk3Y2F1aiswZTRzR0p4elpUT0YwUk14STk1Uk9ScDd0QldyVkk5UytoT3phblAzMm5PcDA4STZMVkdUMkVzekc4Z2JpYkh3R2p3cU5YWFQ5M0hqb09YcDhnaGttK2VBVG9zcHYvV1FDS0xBZnREeS91M1AzdElqTVdtN1Yvc1RsNWZtV0Rkb1g3aDQzT0hRSVFGMjIxTU5wcW5DS09nRWxCaHNPYTd3TTVzNjU4eWZyZWtPNmZkbXA4M3JqUklzQmxJYkN0UUNPQT0", "temalar": ["Sel ve Taşkın"]}, {"baslik": "İKLİM  DEĞİŞİKLİĞİ  KARŞISINDA  KÜLTÜREL  MİRASIN  RİSK HARİTALAMASI", "baslikTr": "Risk mapping of cultural heritage against climate change", "yazar": "Şeyda BÜLBÜL, Özge YALÇINER ERCOŞKUN", "danisman": "", "yil": "2022", "tur": "Makale", "link": "https://www.researchgate.net/publication/369469318_IKLIM_DEGISIKLIGI_KARSISINDA_KULTUREL_MIRASIN_RISK_HARITALAMASI", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "İklim Değişikliği Bağlamında Kültürel Mirasın Sürdürülebilirliği ve Enerji Korunumunun Değerlendirilmesi", "baslikTr": "", "yazar": "Merve Deniz, Ruşen Yamaçlı", "danisman": "", "yil": "2023", "tur": "Makale", "link": "https://dergipark.org.tr/en/pub/dubited/article/1047571", "temalar": ["Enerji ve Karbon"]}, {"baslik": "İKLİM DEĞİŞİKLİĞİ VE DÜNYA MİRASININ KORUNMASI", "baslikTr": "", "yazar": "Neslihan ÖZKERİM GÜNER", "danisman": "", "yil": "2021", "tur": "Makale", "link": "https://dergipark.org.tr/en/download/article-file/1905632", "temalar": ["Diğer Yaklaşımlar"]}, {"baslik": "İklim Değişikliği Ve Kültürel Miras: Türkiye’de İklim Kaynaklı Riskleri Yüksek Kentlerdeki Mimarlık Bölümlerinde Eğitim Ve Araştırma Yaklaşımları", "baslikTr": "", "yazar": "Pelin Gürol Öngören, \nİrem Küçük, \nSibel Acar", "danisman": "", "yil": "2025", "tur": "Makale", "link": "https://jfa.arch.metu.edu.tr/uploads/docs/sayilar/sayi-42-1/metujfa2025105.pdf", "temalar": ["Kentsel Dayanıklılık", "Risk ve Kırılganlık"]}, {"baslik": "A Multi-Hazard Platform for Cultural Heritage at Risk: The STORM Risk Assessment and Management Tool", "baslikTr": "", "yazar": "M Ravankhah, A Chliaoutakis, M J Revez, R de Wit, A V Argyriou, A Anwar, J Heeley, J Birkmann, A Sarris and M Žuvela-Aloise", "danisman": "", "yil": "2020", "tur": "Makale", "link": "https://iopscience.iop.org/article/10.1088/1757-899X/949/1/012111/pdf", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "Stakeholder perspectives on pondscapes: a multinational analysis usingstorylines and the Nature Futures Framework", "baslikTr": "", "yazar": "Parinaz Rashidi, Sopan D. Patil, Jan J. Kuiper, Thora Tenbrink, Jacques-Aristide Perrin, Joël Robin, Sandra Brucet, Pieter Lemmens, Mariana Meerhoff, Thomas Mehner, Lluís Benejam, Beat Oertli, Meryem Beklioğlu, Thomas A. Davidson, Aurélie Boissezon, Jeremy Biggs, Pascale Nicolet, Penny Williams, Robby Wijns and Isabel Rosa", "danisman": "", "yil": "2025", "tur": "Makale", "link": "https://www.tandfonline.com/doi/epdf/10.1080/26395916.2025.2570728?src=getftr&utm_source=clarivate&getft_integrator=clarivate", "temalar": ["Kuraklık ve Su"]}, {"baslik": "Impact of climate change on indoor environment of historic libraries in Mediterranean climate zone", "baslikTr": "", "yazar": "Cihan Turhan, Zeynep Durmus Arsan and Gulden Gokcen Akkurt", "danisman": "", "yil": "2019", "tur": "Makale", "link": "https://www.inderscienceonline.com/doi/epdf/10.1504/IJGW.2019.101083", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Policy Framework for Energy Retrofitting of Built Heritage: A Critical Comparison of UK and Turkey", "baslikTr": "", "yazar": "Negin Jahed, Yasemin D. Aktaş, Peter Rickaby, Ayşe Güliz Bilgin Altınöz", "danisman": "", "yil": "2020", "tur": "Makale", "link": "https://www.mdpi.com/2073-4433/11/6/674", "temalar": ["Geleneksel / Yerel Mimari", "Politika ve Anlaşmalar"]}, {"baslik": "The Heritage Resilience Scorecard: Performance Measurement in Risk Governance of Cultural Heritage", "baslikTr": "", "yazar": "Sibel Yıldırım Esen, Ayşe Güliz Bilgin Altınöz", "danisman": "", "yil": "2021", "tur": "Makale", "link": "https://www.tandfonline.com/doi/full/10.1080/17567505.2020.1864117#abstract", "temalar": ["Kentsel Dayanıklılık", "Politika ve Anlaşmalar"]}, {"baslik": "Archaeology and Dams in Southeastern Turkey Post-Flooding Damage Assessment and Safeguarding Strategies on Cultural Heritage", "baslikTr": "", "yazar": "Nicolò Marchetti, Gabriele Bitelli, Francesca Franci, Federico Zaina", "danisman": "", "yil": "2020", "tur": "Makale", "link": "https://journal.equinoxpub.com/JMA/article/view/18291/20368", "temalar": ["Sel ve Taşkın", "Risk ve Kırılganlık"]}, {"baslik": "Acoustic Environment of Urban Historical Places: A Case Study in Kastamonu, Turkey", "baslikTr": "", "yazar": "Nur Belkayalı, Işıl Kaymaz", "danisman": "", "yil": "2021", "tur": "Makale", "link": "https://www.mdpi.com/2071-1050/13/15/8423", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "TRADITIONAL WATER HARVESTING SYSTEMS IN CLIMATE CHANGE ADAPTATION: INSIGHTS FROM A SEMI-ARID MEDITERRANEAN VILLAGE", "baslikTr": "", "yazar": "Deniz GERÇEK, Hülya YÜCEER, Yasemin ÖZCAN GÖNÜLAL, Ozan UŞTUK, Taygun UZELLİ, Selen GÜLER, Alper BABA", "danisman": "", "yil": "2025", "tur": "Makale", "link": "https://jfa.arch.metu.edu.tr/uploads/docs/sayilar/sayi-42-1/metujfa2025108.pdf", "temalar": ["Sel ve Taşkın", "Kuraklık ve Su"]}, {"baslik": "Impacts of air pollution on cultural heritage corrosion at European level: What has been achieved and what are the future scenarios", "baslikTr": "", "yazar": "Francesca Di Turo, Chiara Proietti, Augusto Screpanti, M. Francesca Fornasier, Irene Cionni, Gabriele Favero, Alessandra De Marco", "danisman": "", "yil": "2016", "tur": "Makale", "link": "https://www.sciencedirect.com/science/article/pii/S0269749116306170?pes=vor&utm_source=clarivate&getft_integrator=clarivate", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "CREATING RESILIENCE FOR TRANSHUMANT AND SMALL FARM SYSTEMS - TURKISH AND ROMANIAN PARADIGMS", "baslikTr": "", "yazar": "Sezen Ocak, Sinan Ogun, Onur Yilmaz", "danisman": "", "yil": "2016", "tur": "Makale", "link": "https://animalsciencejournal.usamv.ro/pdf/2016/Art45.pdf", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "İklim Değişikliği Karşısında Kültürel Mirasın Etkilenebilirliği", "baslikTr": "", "yazar": "Merve Deniz Demirel, Nur Umar", "danisman": "", "yil": "2023", "tur": "Makale", "link": "https://dergipark.org.tr/tr/download/article-file/2740202", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "KÜLTÜREL MİRAS KORUMASI VE KÜLTÜREL MİRASI ETKİLEYEN İKLİM FAKTÖRLERİ: TROYA ANTİK KENTİ ÖRNEĞİ", "baslikTr": "", "yazar": "Tarık Yalçınkaya, Özge Eryücel, Derman Küçükaltan", "danisman": "", "yil": "2020", "tur": "Konferans Bildirisi", "link": "https://www.researchgate.net/profile/Oezge-Eryuecel/publication/349063774_KULTUREL_MIRAS_KORUMASI_VE_KULTUREL_MIRASI_ETKILEYEN_IKLIM_FAKTORLERI_TROYA_ANTIK_KENTI_ORNEGI/links/601daa8192851c4ed54f8ff5/KUeLTUeREL-MIRAS-KORUMASI-VE-KUeLTUeREL-MIRASI-ETKILEYEN-IKLIM-FAKTOeRLERI-TROYA-ANTIK-KENTI-OeRNEGI.pdf?origin=publication_detail&_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InB1YmxpY2F0aW9uIiwicGFnZSI6InB1YmxpY2F0aW9uRG93bmxvYWQiLCJwcmV2aW91c1BhZ2UiOiJwdWJsaWNhdGlvbiJ9fQ", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "İklim Değişikliği ve Mimari Mirasın Koruma Sorunları: Şili Paskalya Adası Örneği", "baslikTr": "", "yazar": "Abdurrahman ELVAN, Gülçin KAHRAMAN", "danisman": "", "yil": "2022", "tur": "Makale", "link": "https://eurasianacademy.org/index.php/socialsciences/article/view/1120/1194", "temalar": ["Geleneksel / Yerel Mimari"]}, {"baslik": "Savunmasız Miras Risklerinin Azaltılması", "baslikTr": "", "yazar": "A.Faruk Göksu", "danisman": "", "yil": "2021", "tur": "Makale", "link": "https://online.fliphtml5.com/fvgh/agmw/#p=2", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "Kültür Mirasının Korunmasında “Risklere Hazırlık” Kavramının Gelişimi", "baslikTr": "", "yazar": "İclal Dinçer", "danisman": "", "yil": "2012", "tur": "Makale", "link": "http://www.mimarlikdergisi.com/index.cfm?sayfa=mimarlik&DergiSayi=378&RecID=2906", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "UNESCO DÜNYA MİRAS KOMİTESİ'NİN İKLİM DEĞİŞİKLİĞİ UYUM SÜRECİNCE YAPTIĞI ÇALIŞMALAR ÜZERİNE BİR İNCELEME", "baslikTr": "", "yazar": "Özlem Karakuş Zambak", "danisman": "", "yil": "2022", "tur": "Konferans Bildirisi", "link": "https://www.researchgate.net/publication/372748446_Iklim_Degisikligi_Baglaminda_Kulturel_Mirasin_Surdurulebilirligi_ve_Enerji_Korunumunun_Degerlendirilmesi", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "İzmir Tarihi Liman Kentinde “İklim” Değişikliği ve “Kültürel” Miras", "baslikTr": "", "yazar": "Bilge Nur Bektas, Damla Güven", "danisman": "", "yil": "2023", "tur": "Konferans Bildirisi", "link": "https://www.meltemizmeda.org/YuklenenDosyalar/Dergi/24112023_0310_Bektas_Guven.pdf", "temalar": ["Deniz Seviyesi ve Kıyı", "Kentsel Dayanıklılık"]}, {"baslik": "Kültürel ve Çevresel Değerlerin Kesişiminde Kültürel Mirasın Korunması: Uluslararası Belgeler Üzerine Bir İnceleme", "baslikTr": "", "yazar": "Mahmut ÖZDEMİRKOL", "danisman": "", "yil": "2025", "tur": "Makale", "link": "https://johschool.com/?mod=tammetin&makaleadi=&key=80413", "temalar": ["Sel ve Taşkın"]}, {"baslik": "Enerji Verimli Bir Restorasyon Uygulaması: Mardin Tamirevi Deneyimi", "baslikTr": "", "yazar": "Süreyya Topaloğlu", "danisman": "", "yil": "2022", "tur": "Makale", "link": "https://mimaristdergi.org/storage/upload/pdfs/1733754959-tr.pdf", "temalar": ["Enerji ve Karbon"]}, {"baslik": "Kadıköy’de Bir Konut Alanı Örneğinde Yapılı ve Doğal Çevrenin Bütüncül Korunmasının İklim Değişikliğine Uyum Sürecindeki Önemi", "baslikTr": "", "yazar": "Esin Özlem Aktuğlu Aktan, Nilgün Çolpan Erkan", "danisman": "", "yil": "2022", "tur": "Makale", "link": "https://mimaristdergi.org/storage/upload/pdfs/1733754959-tr.pdf", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "İklim Değişikliği Süreci ve Türkiye’de İklim Değişikliği Eylem Planlarının Mekânsal Perspektifi", "baslikTr": "", "yazar": "Dilan Nur Öbük", "danisman": "", "yil": "2024", "tur": "Makale", "link": "https://www.researchgate.net/publication/380358068_Iklim_Degisikligi_Sureci_ve_Turkiye'de_Iklim_Degisikligi_Eylem_Planlarinin_Mekansal_Perspektifi", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "Çevresel Sürdürülebilir Yaşam Tarzı", "baslikTr": "", "yazar": "Güzin Yasemin Tunçay, Nesrin Çobanoğlu", "danisman": "", "yil": "2024", "tur": "Makale", "link": "https://dergipark.org.tr/tr/pub/ucbad/article/1498018", "temalar": ["Sel ve Taşkın"]}, {"baslik": "İklim Değişikliğinin ve İklim Değişikliğiyle İlgili Küresel Anlaşmaların Çevre Etiği Bakımından Değerlendirilmesi", "baslikTr": "", "yazar": "Tijen İğci, Nesrin Çobanoğlu", "danisman": "", "yil": "2019", "tur": "Makale", "link": "https://dergipark.org.tr/tr/pub/aucevrebilim/article/515454", "temalar": ["Sel ve Taşkın", "Politika ve Anlaşmalar"]}, {"baslik": "Çevre Etiği Açısından Ormancılık Etiği", "baslikTr": "", "yazar": "Ercüment Özdemir, Nesrin Çobanoğlu", "danisman": "", "yil": "2018", "tur": "Makale", "link": "https://www.researchgate.net/publication/323403177_CEVRE_ETIGI_ACISINDAN_ORMANCILIK_ETIGI", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Türkiye’deki Doğa Koruma ve Ormancılık Yönetiminde Karar Vericilerin Çevre Etiği Algısının Uygulamalı Etik Değerlendirmesi", "baslikTr": "", "yazar": "Murat Yıldız, Nesrin Çobanoğlu", "danisman": "", "yil": "2017", "tur": "Makale", "link": "https://dergipark.org.tr/tr/pub/sobild/article/1391846", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Biyoetik Çerçevede Çevre Politikaları", "baslikTr": "", "yazar": "Nesrin Çobanoğlu, Arzu Özsoy", "danisman": "", "yil": "2015", "tur": "Makale", "link": "https://dergipark.org.tr/tr/pub/sobild/article/1390607", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "Türkiye'de Doğal Varlıkların Sürdürülebilir Kullanımında Biyoetiğin Bir Araç Olarak Kullanılması; Batı Anadolu Yörükleri Üzerinden Örnek Olay İncelemesi", "baslikTr": "", "yazar": "Okan Ürker, Nesrin Çobanoğlu", "danisman": "", "yil": "2014", "tur": "Makale", "link": "https://dergipark.org.tr/tr/pub/sobild/article/1388363", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Türkiye Su Politikalarının Biyoetik Değerlendirilmesi: Ergene Nehri Örneği", "baslikTr": "", "yazar": "E. Olgun, Nesrin Çobanoğlu", "danisman": "", "yil": "2012", "tur": "Makale", "link": "https://avesis.gazi.edu.tr/yayin/6d821d5f-292e-467e-8497-48b73ee31728/turkiye-su-politikalarinin-biyoetik-degerlendirilmesi-ergene-nehri-ornegi", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "Sürdürülebilir Kalkınma ve Çevre Etiği", "baslikTr": "", "yazar": "Turan Ergün, Nesrin Çobanoğlu", "danisman": "", "yil": "2012", "tur": "Makale", "link": "https://dergipark.org.tr/en/download/article-file/3519346", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Güvenlik Politikaları Bağlamında İklim Değişikliği ve Savunma Sanayi", "baslikTr": "", "yazar": "Nesrin Çobanoğlu Yüksel", "danisman": "", "yil": "2024", "tur": "Makale", "link": "https://avesis.gazi.edu.tr/yayin/4f18da3a-984f-47bd-874d-288672d1afc6/guvenlik-politikalari-baglaminda-iklim-degisikligi-ve-savunma-sanayi", "temalar": ["Sel ve Taşkın", "Politika ve Anlaşmalar"]}, {"baslik": "Çevresel Sürdürülebilir Yaşam Tarzı", "baslikTr": "", "yazar": "Güzin Yasemin Tunçay, Nesrin Çobanoğlu", "danisman": "", "yil": "2024", "tur": "Makale", "link": "https://dergipark.org.tr/tr/download/article-file/3991655", "temalar": ["Sel ve Taşkın"]}, {"baslik": "Climate Responsive Building Design in the Kathmandu Valley", "baslikTr": "", "yazar": "Anir Kumar Upadhyay, Harunori Yoshida \n& Hom Bahadur Rijal", "danisman": "", "yil": "2005", "tur": "Makale", "link": "https://www.tandfonline.com/doi/abs/10.3130/jaabe.5.169", "temalar": ["Geleneksel / Yerel Mimari"]}, {"baslik": "RESILIENT CULTURAL HERITAGE FOR A FUTURE OF CLIMATE CHANGE", "baslikTr": "", "yazar": "Bárbara Mínguez García", "danisman": "", "yil": "2020", "tur": "Makale", "link": "https://www.jstor.org/stable/26872781", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "A Methodology for the Assessment of Climate Change Adaptation Options for Cultural Heritage Sites", "baslikTr": "", "yazar": "Bethune Carmichael, Greg Wilson, \nIvan Namarnyilk, Sean Nadji, \nJacqueline Cahill, Sally Brockwell, \nBob Webb, Deanne Bird and Cathy Daly", "danisman": "", "yil": "2020", "tur": "Makale", "link": "https://www.mdpi.com/2225-1154/8/8/88/review_report", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "Review of energy efficient features in vernacular architecture for improving indoor thermal comfort conditions", "baslikTr": "", "yazar": "S.S. Chandel, VandnaSharma, \nBhanuM.Marwah", "danisman": "", "yil": "2016", "tur": "Makale", "link": "https://www.sciencedirect.com/science/article/pii/S1364032116303677", "temalar": ["Geleneksel / Yerel Mimari", "Enerji ve Karbon"]}, {"baslik": "Climate change impacts on cultural heritage: A literature review", "baslikTr": "", "yazar": "Elena Sesana, Alexandre S. Gagnon, \nChiara Ciantelli, JoAnn Cassar, \nJohn J. Hughes", "danisman": "", "yil": "2020", "tur": "Makale", "link": "https://wires.onlinelibrary.wiley.com/doi/10.1002/wcc.710", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "INTERNATIONAL APPROACHES TO CLIMATE CHANGE AND CULTURAL HERITAGE", "baslikTr": "", "yazar": "George Hambrecht, Marcy Rockman", "danisman": "", "yil": "2017", "tur": "Makale", "link": "https://www.jstor.org/stable/26585470?seq=1", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Yaşam Döngüsü Süreçlerinde Yapi Ürünü-Çevre Etkileşimi", "baslikTr": "", "yazar": "Gökçe Tuna Taygun, Ayşe Balanlı", "danisman": "", "yil": "2005", "tur": "Makale", "link": "https://megaronjournal.com/jvi.aspx?un=MEGARON-80299&volume=1&issue=1", "temalar": ["Enerji ve Karbon"]}, {"baslik": "Impact of climate change in cultural heritage: from energy consumption to artefacts’ conservation and building rehabilitation", "baslikTr": "", "yazar": "Guilherme B.A. Coelho, Hugo Entradas Silva, \nFernando M.A. Henriques", "danisman": "", "yil": "2020", "tur": "Makale", "link": "https://www.sciencedirect.com/science/article/pii/S0378778820306629", "temalar": ["Enerji ve Karbon"]}, {"baslik": "Cultural Landscapes under the Threat of Climate Change: A Systematic Study of Barriers to Resilience", "baslikTr": "", "yazar": "Gül Aktürk 1, Ahmadreza Shirvani Dastgerdi", "danisman": "", "yil": "2021", "tur": "Makale", "link": "https://www.mdpi.com/2071-1050/13/17/9974", "temalar": ["Kentsel Dayanıklılık", "Ekosistem ve Peyzaj"]}, {"baslik": "İklim Krizi ve Kültürel Mirasın Korunması Konusunda Uluslararası Yaklaşımlar", "baslikTr": "", "yazar": "C. İrem Gençer", "danisman": "", "yil": "2022", "tur": "Diğer", "link": "https://www.mimarist.org/mimar-ist-sayi-75-sonbahar/", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "İklim Değişikliğinin Kültürel Miras Üzerindeki Risk Değerlendirmeleri: Edirne Örneği", "baslikTr": "", "yazar": "Banu Gökmen Erdoğan", "danisman": "", "yil": "2022", "tur": "Diğer", "link": "https://www.mimarist.org/mimar-ist-sayi-75-sonbahar/", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "İklim Krizi Karşısında Kırsal Mirastan Alınabilecek Dersler", "baslikTr": "", "yazar": "Zeynep Eres, Koray Güler", "danisman": "", "yil": "2022", "tur": "Diğer", "link": "https://www.mimarist.org/mimar-ist-sayi-75-sonbahar/", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Enerji Verimli Bir Restorasyon Uygulaması: Mardin Tamirevi Deneyimi", "baslikTr": "", "yazar": "Süreyya Topaloğlu", "danisman": "", "yil": "2022", "tur": "Diğer", "link": "https://www.mimarist.org/mimar-ist-sayi-75-sonbahar/", "temalar": ["Enerji ve Karbon"]}, {"baslik": "Kadıköy’de Bir Konut Alanı Örneğinde Yapılı ve Doğal Çevrenin Bütüncül Korunmasının İklim Değişikliğine Uyum Sürecindeki Önemi", "baslikTr": "", "yazar": "Esin Özlem Aktuğlu Aktan, Nilgün Çolpan Erkan", "danisman": "", "yil": "2022", "tur": "Diğer", "link": "https://www.mimarist.org/mimar-ist-sayi-75-sonbahar/", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "Yeni Avrupa Bauhaus’u Yaklaşımı ve Getirdiği Açılımlar", "baslikTr": "", "yazar": "Aylin Akçabozan Taşkıran", "danisman": "", "yil": "2022", "tur": "Diğer", "link": "https://www.mimarist.org/mimar-ist-sayi-75-sonbahar/", "temalar": ["Diğer Yaklaşımlar"]}, {"baslik": "Kamu Yönetimi Uygulamalarında Çevre Etiği", "baslikTr": "", "yazar": "Görkem SAYLAN HIZARCIOĞLU", "danisman": "Prof.Dr.Nesrin ÇOBANOĞLU YÜKSEL", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "Antalya’da İklim Değişikliği ve Turizme Etkileri", "baslikTr": "", "yazar": "Ayesha NOREEN", "danisman": "Prof.Dr.Nesrin ÇOBANOĞLU YÜKSEL", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Biyoetik Biyopolitikalar Açısından Yaşlanan Ormanlar”", "baslikTr": "", "yazar": "Murat YILDIZ", "danisman": "Prof.Dr.Nesrin ÇOBANOĞLU YÜKSEL", "yil": "2016", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar", "Ekosistem ve Peyzaj"]}, {"baslik": "Biyoetik Biyopolitikalar Açısından Günlük Ağaçları", "baslikTr": "", "yazar": "Okan ÜRKER", "danisman": "Prof.Dr.Nesrin ÇOBANOĞLU YÜKSEL", "yil": "2015", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar", "Ekosistem ve Peyzaj"]}, {"baslik": "Kentsel Dönüşüm Projelerinin Çevre Etiği Bağlamında Değerlendirilmesi: Ankara Örneği", "baslikTr": "", "yazar": "Yavuz Selim AKKOÇ", "danisman": "Prof.Dr.Nesrin ÇOBANOĞLU YÜKSEL", "yil": "2015", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Çevre Politikalarının Oluşturulmasında Katılımcılığın Önemi", "baslikTr": "", "yazar": "Arzu İrge ÖZYOL", "danisman": "Prof.Dr.Nesrin ÇOBANOĞLU YÜKSEL", "yil": "2014", "tur": "Tez", "link": "", "temalar": ["Göç ve Toplum", "Politika ve Anlaşmalar"]}, {"baslik": "Türkiye'de Çevre Denetimi ve Çevre Etiği Bağlamında Yeniden \nYapılandırılması", "baslikTr": "", "yazar": "Turan ERGÜN", "danisman": "Prof.Dr.Nesrin ÇOBANOĞLU YÜKSEL", "yil": "2014", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "Kırsal Alanda Çevre Sorunlarına Etik Yaklaşım: Kırsal Çevre Etiği", "baslikTr": "", "yazar": "Abdulkadir MAHMUTOĞLU", "danisman": "Prof.Dr.Nesrin ÇOBANOĞLU YÜKSEL", "yil": "2009", "tur": "Tez", "link": "", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Climate Change and the Resilience of Collective Memories", "baslikTr": "", "yazar": "Gül Aktürk", "danisman": "Prof.dr.ing. C. Hein, Dr. H.D. van Bergeijk", "yil": "2023", "tur": "Tez", "link": "https://pure.tudelft.nl/ws/portalfiles/portal/141803190/9789463666459_WEB.pdf", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "Türkiye'de iklim değişikliğinin kültürel miras üzerindeki etkileri", "baslikTr": "", "yazar": "Sabiha Nur Torun", "danisman": "Doç. Dr. Evren TÜRKMENOĞLU", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Kültürel miras yapıları için NZEB hedefleri doğrultusunda doku ölçeğinde iyileştirme senaryoları model önerisi", "baslikTr": "", "yazar": "Elvan Kumtepe", "danisman": "Prof.Dr.İdil AYÇAM", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Unesco dünya miras alanlarının iklim değişikliği uyum kapasitelerinin \nbelirlenmesi ve sürdürülebilir turizm uygulamaları ile geliştirilmesi: Türkiye örneği", "baslikTr": "", "yazar": "AYŞE SELİN DÜLGER", "danisman": "PROF. DR. SELMA MEYDAN UYGUR", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Risk ve Kırılganlık"]}, {"baslik": "Sea level rise and flood vulnerability of coastal heritage sites: An assessment of rapid methods and modelling techniques", "baslikTr": "", "yazar": "ARİF ÇAĞATAY UYSAL", "danisman": "DR. ÖĞR. ÜYESİ GÜLİZAR ÖZYURT TARAKCIOĞLU", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Deniz Seviyesi ve Kıyı", "Sel ve Taşkın"]}, {"baslik": "Kültürel miras değerlerinin korunarak yaşatılması: İstanbul, Üsküdar, Çiçekçi Bölgesi \neylem planı yaklaşımı", "baslikTr": "", "yazar": "BURCU ÜNSEV", "danisman": "PROF. DR. HATİCE ARZU KOCABAŞ DİREN", "yil": "2019", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "İklim Değişikliğine Uyum Kapsamında Tarihi Kırsal Peyzajların Permakültür\nTemelli Korunması: İzmir- Urla Barbaros Örneği", "baslikTr": "", "yazar": "SEDA ÖZTEKİN", "danisman": "Prof.Dr.NEZİHAT KÖŞKLÜK KAYA", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj", "Risk ve Kırılganlık"]}, {"baslik": "A proposed model for understanding the impacts of climate change on tangible \ncultural heritage", "baslikTr": "", "yazar": "EMİNE GİZEM BAŞKAN", "danisman": "PROF. DR. SOOFIA TAHIRA ELIAS ÖZKAN", "yil": "2016", "tur": "Tez", "link": "", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "İklim değişikliğinin İstanbul'daki şehir turizmine ve kültür varlıklarına etkisi", "baslikTr": "", "yazar": "NİSA YARGICI", "danisman": "PROF. DR. BARBAROS GÖNENÇGİL", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "Kastamonu'nun bütünleşik tabiat turizmi seçenekleri: Glamping, orman banyosu, \niklim terapisi ve dijital detoks", "baslikTr": "", "yazar": "KAAN BERK DALAHMETOĞLU", "danisman": "DOÇ. DR. AYDOĞAN AYDOĞDU", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "İklim stres etkenlerinin Niğde kırsal mimarisinde kullanılan ignimbirit taşı üzerindeki \netkilerinin değerlendirilmesi", "baslikTr": "", "yazar": "GİZEM ÖZAL CANPOLAT", "danisman": "PROF. DR. FAZİLET DUYGU SABAN ; \nPROF. DR. SEMİHA AKÇAÖZOĞLU", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Geleneksel / Yerel Mimari"]}, {"baslik": "The problems related to snow load according to the effect of climate change on \nthe roofs of traditional Turkish houses", "baslikTr": "", "yazar": "FEYZA YILMAZ", "danisman": "PROF. DR. ASENA SOYLUK", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın"]}, {"baslik": "İklim değişikliği karşısında kültürel mirasın risk haritalaması", "baslikTr": "", "yazar": "ŞEYDA BÜLBÜL", "danisman": "PROF. DR. ÖZGE YALÇINER ERCOŞKUN", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "Heritage preservation and climate change adaptation for floods in historic schools:\n İzmir city centre", "baslikTr": "", "yazar": "TUĞÇE HALICI", "danisman": "DR. ÖĞR. ÜYESİ SİBEL YILDIRIM ESEN", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliğinin tarihi kıyı yerleşimlerindeki etkilerine karşı koruma stratejileri: \nKuşadası Kaleiçi örneği", "baslikTr": "", "yazar": "SÜLEYMAN BURÇAK ÇIKIKÇI", "danisman": "PROF. DR. HÜLYA YÜCEER ; \nPROF. DR. ALPER BABA", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Deniz Seviyesi ve Kıyı", "Kentsel Dayanıklılık"]}, {"baslik": "Mevcut binaların dönüştürülmesinde iklim değişikliğine karşı uyumlandırma \nçalışmaları üzerine bir araştırma", "baslikTr": "", "yazar": "ELÇİN ÖZKAYA", "danisman": "DOÇ. DR. GÜLSU ULUKAVAK HARPUTLUGİL", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "İklim değişikliğinin tarihi çevrelere etkisinin yerin ruhu açısından irdelenmesi", "baslikTr": "", "yazar": "MAİDE UĞUR", "danisman": "PROF. DR. ESTER ETİ AKYÜZ LEVİ", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Geçmişimizin geleceğinde iklim değişikliği: Beyşehir Eşrefoğlu cami", "baslikTr": "", "yazar": "SALİHA AKIN", "danisman": "DOÇ. DR. SAADET ARMAĞAN GÜLEÇ KORUMAZ", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "İklim Değişikliği Etkisiyle Artan Sellerde Risk Yönetimi İçin Bir Model Önerisi ve \nEdirne Örneği Üzerinden İncelenmesi", "baslikTr": "", "yazar": "BANU GÖKMEN ERDOĞAN", "danisman": "PROF. DR. ZEYNEP GÜL ÜNAL", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Risk ve Kırılganlık"]}, {"baslik": "A proposed model for understanding the impacts of climate change on tangible \ncultural heritage", "baslikTr": "", "yazar": "EMİNE GİZEM BAŞKAN", "danisman": "PROF. DR. SOOFIA TAHIRA ELIAS ÖZKAN", "yil": "2016", "tur": "Tez", "link": "", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "Arazi kullanımı ve iklim değişikliğinin ekosistem hizmetleri üzerine etkilerinin \ndeğerlendirilmesi: İstanbul örneği", "baslikTr": "", "yazar": "EREN DAĞRA SÖKMEN", "danisman": "DOÇ. DR. ŞERİFE DOĞANAY YENER", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "İklim değişikliği bağlamında ekolojik duyarlılık analizi: Gökçeada örneği", "baslikTr": "", "yazar": "ÜMMÜHAN GÜL KARACA", "danisman": "DOÇ. DR. ÇİĞDEM KAPTAN AYHAN", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Kampüs ölçeğinde iklim değişikliğine dirençli peyzaj su ihtiyacı analizi", "baslikTr": "", "yazar": "ELİF AK ÇERTMEK", "danisman": "PROF. DR. MEHMET AKİF ERDOĞAN", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Ekosistem ve Peyzaj"]}, {"baslik": "İklim değişikliğiyle mücadelede dilek yarımadası büyük menderes deltası milli \nparkının karbon yutağı olma potansiyelini korumaya yönelik stratejilerin geliştirilmesi", "baslikTr": "", "yazar": "MELDA KÖSE", "danisman": "PROF. DR. EMİNE MALKOÇ TRUE", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kuraklık ve Su", "Politika ve Anlaşmalar"]}, {"baslik": "Kampüs çevrelerinde iklim değişikliğine uyum için doğa temelli çözümler", "baslikTr": "", "yazar": "BİLGE KAAN YALÇIN", "danisman": "DR. ÖĞR. ÜYESİ SELDA KABULOĞLU KARAOSMAN", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "Sürdürülebilir peyzaj planlama ve tasarımı için kentsel alanlarda iklim parametrelerinin \nve iklim bölgesi temelli morfolojik yaklaşımın iklim senaryoları ile değerlendirilmesi", "baslikTr": "", "yazar": "AMRAGIA H MOSTAFA ELAHSADI", "danisman": "PROF. DR. MEHMET ÇETİN", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Kentsel su kaynaklarında iklim değişikliği ile mücadele: Düden Çayı nehir restorasyonu \nüzerine bir öneri", "baslikTr": "", "yazar": "ÖVGÜ RESMİYE GÜLAÇAR", "danisman": "DOÇ. DR. ENGİN EYÜP EYUBOĞLU", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kuraklık ve Su"]}, {"baslik": "Avrupa birliği yeşil mutabakat çerçevesinde iklim değişikliği ile uyumlu kentler: \nAntalya kenti için çikarimlar", "baslikTr": "", "yazar": "SENA AĞIL", "danisman": "PROF. DR. VELİ ORTAÇEŞME", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Risk ve Kırılganlık"]}, {"baslik": "İklim değişikliğine uyum, dirençli kentler ve biyofilik tasarım kapsamında deneysel \npark tasarımı: Konya örneği", "baslikTr": "", "yazar": "ZÜLFİYE SACİDE ULU YILDIZ", "danisman": "PROF. DR. ELMAS ERDOĞAN", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Sürdürülebilirlik çerçevesinde iklim akıllı kent ve peyzaj bağlamı: Bartın örneği", "baslikTr": "", "yazar": "İDİL DAL", "danisman": "PROF. DR. SEBAHAT AÇIKSÖZ", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Ekosistem ve Peyzaj"]}, {"baslik": "Yarı kurak kentlerin iklim değişikliği süreci için kentsel yeşil alan stratejileri; Siirt örneği", "baslikTr": "", "yazar": "NURBANU ÖZKARTAL", "danisman": "PROF. DR. ŞEVKET ALP", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Türkiye'nin iklim değişikliği uyum stratejisi kapsamında yeşilalanlarda yıllık bakım ve \nonarım çalışmaları", "baslikTr": "", "yazar": "RABİ DİLŞAD BOZDEMİR", "danisman": "PROF. DR. MEHMET EMİN BARIŞ", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar", "Risk ve Kırılganlık"]}, {"baslik": "Kentsel ısı adası etkisinin azaltılmasında iklim duyarlı tasarım yaklaşımları: Elazığ kent \nörneği", "baslikTr": "", "yazar": "YAŞAR MENTEŞ", "danisman": "PROF. DR. SEVGİ YILMAZ", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Soğuk iklim bölgelerinde kentsel iklim dinamiklerinin modellenmesi: Erzurum \nörneğinde UrbClim yaklaşımı", "baslikTr": "", "yazar": "CİHAD BİLGE", "danisman": "PROF. DR. MEHMET AKİF IRMAK", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Çevre düzeni planı ölçeğinde iklim değişikliğinin düzenleyici ekosistem hizmetlerine \netkisi: Kırklareli örneği", "baslikTr": "", "yazar": "ENGİN KABATAŞ", "danisman": "PROF. DR. TUĞBA KİPER", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "İklim değişikliğine dirençli bina tasarım ölçütlerinin analitik hiyerarşi süreci (AHS) \nkapsamında belirlenmesi", "baslikTr": "", "yazar": "BİRCAN SELMA DELİBAŞ", "danisman": "DR. ÖĞR. ÜYESİ AYŞEN ÇOBAN", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Climate resilience through identifying and prioritizing the regeneration of urban \nvegetation voids a case study of Balat and Fener", "baslikTr": "", "yazar": "MOJTABA SAMADI", "danisman": "DOÇ. DR. AYŞEGÜL AKÇAY KAVAKOĞLU", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliği ve düzenleyici ekosistem hizmetleri ilişkisi: Düzce kenti örneği", "baslikTr": "", "yazar": "NERMİN BAŞARAN", "danisman": "PROF. DR. ENGİN EROĞLU", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Ekosistem ve Peyzaj"]}, {"baslik": "İklim değişikliğine dirençli habitat stratejilerinin belirlenmesi: KTÜ kanuni yerleşkesi \nörneği", "baslikTr": "", "yazar": "DEMET ÜLKÜ GÜLPINAR SEKBAN", "danisman": "PROF. DR. CENGİZ ACAR", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Politika ve Anlaşmalar"]}, {"baslik": "İklim değişikliği-kentsel yeşil alan ilişkisi bağlamında, yerel halkın farkındalığının \nbelirlenmesi: Tekirdağ ili Ergene ilçesi örneği", "baslikTr": "", "yazar": "GİZEM SENANUR GÖZLER", "danisman": "PROF. DR. TUĞBA KİPER", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliğiyle mücadelede kurakçıl peyzaj uygulamalarının yaygınlaştırılması \niçin bir yöntem önerisi", "baslikTr": "", "yazar": "NEFİSE ÇETİN", "danisman": "PROF. DR. SİBEL MANSUROĞLU", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Kamusal açık alanlarda değişen mikro iklim koşulları ve dış mekân termal konfor: \nTaksim Meydanı ve Gezi Parkı örnekleri", "baslikTr": "", "yazar": "EDA HAFIZOĞLU", "danisman": "DOÇ. DR. GÜLDEN DEMET ORUÇ ERTEKİN", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "İklim odaklı yeşil altyapı gelişim modeli: Ankara kenti örneği", "baslikTr": "", "yazar": "YEKTA KÖSE", "danisman": "PROF. DR. ŞÜKRAN ŞAHİN ; \nDR. ÖĞR. ÜYESİ VOLKAN MÜFTÜOĞLU", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "Küresel ısınma ve iklim değişikliğinin sıcaklık ve referans evapotranspirasyona etkisinin \ndeğerlendirilmesi: Malatya ili örneği", "baslikTr": "", "yazar": "EYÜP BURAK SELÇUK", "danisman": "DR. ÖĞR. ÜYESİ AHMET SALİH GÜNAYDIN", "yil": "2021", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın"]}, {"baslik": "Akdeniz iklim koşullarında kentsel mikro iklimin değerlendirilmesi: İzmir - Karşıyaka örneği", "baslikTr": "", "yazar": "SEDA ŞEMSİYECİ", "danisman": "DR. ÖĞR. ÜYESİ GÜLŞAH KAÇMAZ", "yil": "2021", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Soğuk iklim bölgelerinde iklim duyarlı konut bölgesi tasarım ilkelerinin değerlendirilmesi \nve bir model önerisi: Erzurum örneği", "baslikTr": "", "yazar": "DOVLETGELDI HASANOV", "danisman": "DOÇ. DR. DOĞAN DURSUN", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Diğer Yaklaşımlar"]}, {"baslik": "Meles deresi ve havzasının iklim değişikliğine yönelik peyzaj kırılganlığının irdelenmesi", "baslikTr": "", "yazar": "ILGAZ EKŞİ", "danisman": "PROF. DR. HAKAN DOYGUN ; \nDOÇ. DR. NURDAN ERDOĞAN", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Kuraklık ve Su", "Ekosistem ve Peyzaj"]}, {"baslik": "İklim değişikliğine uyum sürecinde suya duyarlı kent yaklaşımları: Malatya kent vizyonu", "baslikTr": "", "yazar": "MERVE FEYZA ERGAN", "danisman": "PROF. DR. SEVGİ GÖRMÜŞ CENGİZ", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Risk ve Kırılganlık"]}, {"baslik": "Arazi kullanımı/örtüsü değişimi ve iklim değişikliği arasındaki ilişkinin İstanbul örneğinde \nçözümlenmesi", "baslikTr": "", "yazar": "BURAK SEKMAN", "danisman": "DR. ÖĞR. ÜYESİ SERHAT CENGİZ", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "İklim duyarlı peyzaj tasarımında bitki kullanım ölçütlerinin belirlenmesi: \nBilkent Üniversitesi kampüsü", "baslikTr": "", "yazar": "FATMA NUR KARANFİL", "danisman": "PROF. DR. ŞÜKRAN ŞAHİN", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Ekosistem ve Peyzaj"]}, {"baslik": "İzmir kenti kıyı ilçeleri iklim değişikliği kırılganlık analizi", "baslikTr": "", "yazar": "AYBÜKE CANGÜZEL", "danisman": "DOÇ. DR. ÇİĞDEM COŞKUN HEPCAN", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Deniz Seviyesi ve Kıyı", "Kentsel Dayanıklılık"]}, {"baslik": "Peyzaj, iklim ve kültür arasında kurulan çok boyutlu ilişkilerin araştırılması: \nGüneydoğu Anadolu örneği", "baslikTr": "", "yazar": "BAŞAK AKARSU", "danisman": "PROF. DR. GÜLŞEN AYTAÇ", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "İklim değişikliğinin arazi örtüsü/arazi kullanımı kapsamında değerlendirilmesi \n(Samsun ili örneği)", "baslikTr": "", "yazar": "YELİZ EMECEN", "danisman": "DR. ÖĞR. ÜYESİ NURGÜL ERDEM", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Urban recreation areas in terms of resilience to climate change: \nThe case of Hunter's Point South Park, New York city", "baslikTr": "", "yazar": "NUR SİMAİŞ", "danisman": "DR. ÖĞR. ÜYESİ BENGİ KORGAVUŞ", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Ekosistem ve Peyzaj"]}, {"baslik": "İklim değişikliği dirençlilik senaryosu: Artan sel riski çerçevesinde Bursa alan çalışması", "baslikTr": "", "yazar": "AYŞE SENA ÇILDIR", "danisman": "DR. DİDEM GÜNEŞ YILMAZ", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Kentlerde iklim değişikliğine uyum çerçevesinde yeşil altyapı uygulamaları: \nAvrupa ve Türkiye yeşil başkentlerinin irdelenmesi", "baslikTr": "", "yazar": "SENA YANIK", "danisman": "PROF. DR. BANU ÖZTÜRK KURTASLAN", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Risk ve Kırılganlık"]}, {"baslik": "İklim odağında tarihi ve kültürel kolektif belleğin yönlendirdiği kentsel tasarım rehberi: \nSafranbolu kent örneği", "baslikTr": "", "yazar": "AYŞE BETÜL ÇUFALI", "danisman": "PROF. DR. ŞÜKRAN ŞAHİN", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliğine karşı kentsel dirençlilik önerileri geliştirilmesi, Mudanya örneği", "baslikTr": "", "yazar": "ELİF ALTAŞ", "danisman": "DR. ÖĞR. ÜYESİ KAMİL ERKEN", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliğine uyumlu kentler tasarlamada peyzaj mimarlarının rolü;\n Beşiktaş ilçesi örneği", "baslikTr": "", "yazar": "EZGİ ÇAVDUR", "danisman": "DOÇ. DR. NİLÜFER KART AKTAŞ", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Ekosistem ve Peyzaj"]}, {"baslik": "İklim ve su dirençli yeşil kampüs rehberi: İnönü Üniversitesi örneği", "baslikTr": "", "yazar": "FATMA ÖZLEM DİNÇ", "danisman": "PROF. DR. BÜLENT YILMAZ", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliğine karşı kentsel dirençlilik açısından mavi-yeşil altyapının önemi: Edirne \nkent merkezi örneği", "baslikTr": "", "yazar": "SÜMEYYE DEVECİ", "danisman": "DOÇ. DR. ÇİĞDEM KAPTAN AYHAN", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliği çerçevesinde Türkiye'nin biyoiklimsel konfor durumunun modellenmesi", "baslikTr": "", "yazar": "MERVE ŞAHİNGÖZ", "danisman": "PROF. DR. SÜHA BERBEROĞLU", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın"]}, {"baslik": "Kent içi turizm - rekreasyon koridorlarında iklim değişikliğine yönelik çözüm önerileri", "baslikTr": "", "yazar": "SEMİNA AKTAŞ", "danisman": "PROF. DR. ELİF BAYRAMOĞLU", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "Tarihi kentsel peyzaj kavramı çerçevesinde iklim değişikliği olgusunun yerel politika \nbelgelerinde irdelenmesi: Eskişehir örneği", "baslikTr": "", "yazar": "ZEHRA BETÜL KANLI", "danisman": "DR. ÖĞR. ÜYESİ AÇALYA ALPAN ; \nDR. ÖĞR. ÜYESİ EVRİM KOÇ", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Okul peyzaj mekanlarının iklim değişikliğine uyum sürecine yönelik stratejik eylem \nplan modeli", "baslikTr": "", "yazar": "SİBEL AKTEN", "danisman": "PROF. DR. ATİLA GÜL", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar", "Ekosistem ve Peyzaj"]}, {"baslik": "İstanbul kent çeperinde bir tarihi kırsal peyzajın korunmasının iklim uyumu ve \nsürdürülebilirlik ilkeleri açısından irdelenmesi: Şile, Gökmaslı geleneksel yerleşimi", "baslikTr": "", "yazar": "SENEM İME", "danisman": "DOÇ. DR. KORAY GÜLER", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Kent vadilerinin planlanmasında iklim bilgisinin kullanımı: İmrahor vadisi örneği", "baslikTr": "", "yazar": "HATİCE ALP", "danisman": "PROF. DR. DİCLE OĞUZ", "yil": "2021", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "Küresel iklim değişikliğinin güneş enerjisi özelinde yenilenebilir enerji potansiyeline \netkisi ve arazi örtüsü ile ilişkisi: Van örneği", "baslikTr": "", "yazar": "EMEL AYDIN", "danisman": "DOÇ. DR. SERKAN KEMEÇ", "yil": "2020", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Enerji ve Karbon"]}, {"baslik": "İklim duyarlı kent planlama stratejileri: Erzurum kenti örneği", "baslikTr": "", "yazar": "MERVE YAVAŞ", "danisman": "PROF. DR. SEVGİ YILMAZ", "yil": "2019", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Politika ve Anlaşmalar"]}, {"baslik": "Ilımlı-nemli iklim koşullarında keçe esaslı bitkilendirilmiş cephe sistemlerinin \nısıl performansının değerlendirilmesi", "baslikTr": "", "yazar": "ELİF ÖZER YÜKSEL", "danisman": "PROF. DR. AYŞE NİL TÜRKERİ", "yil": "2019", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Ekosistem ve Peyzaj"]}, {"baslik": "İklimle dengeli tasarımda dış mekan iklim haritalarının kullanım olanakları: \nÇukurova Üniversitesi Mimarlık Fakültesi örneği", "baslikTr": "", "yazar": "CEREN ALTUNKASA", "danisman": "DOÇ. DR. CENGİZ USLU", "yil": "2019", "tur": "Tez", "link": "", "temalar": ["Kültürel Miras (Genel)"]}, {"baslik": "İklim değişikliğinin yerleşik düzen,kentsel yapı üzerindeki etkileri ve çözüm önerileri", "baslikTr": "", "yazar": "VOLKAN ERKAN", "danisman": "YRD. DOÇ. DR. SELİM VELİOĞLU", "yil": "2008", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Integration of climate actions: assessing adaptation-mitigation interactions in Türkiye's \nclimate action plans", "baslikTr": "", "yazar": "BESTE LÖKER", "danisman": "PROF. DR. SERAP KAYASÜ", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar", "Enerji ve Karbon"]}, {"baslik": "Social perceptions on climate change, environmental degradation, and internal migration \nafter the wildfires of 2021 in rural areas of Muğla", "baslikTr": "", "yazar": "FURKAN FATİH YEŞİLTAŞ", "danisman": "DR. ÖĞR. ÜYESİ KEREM KILIÇDAROĞLU", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Göç ve Toplum"]}, {"baslik": "Migration and relocation attitudes to climate change and sea level rise: A conceptual \nanalysis on the case of Tuvalu", "baslikTr": "", "yazar": "AYKUT TOKGÖZ", "danisman": "PROF. DR. ZÜHAL YEŞİLYURT GÜNDÜZ", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Deniz Seviyesi ve Kıyı", "Göç ve Toplum"]}, {"baslik": "İklim değişikliğine kültürel adaptasyon bağlamında sürdürülebilir gastronomi", "baslikTr": "", "yazar": "ÖZGÜR ERDİ AKBABA", "danisman": "DR. ÖĞR. ÜYESİ EZGİ DEMİR ÖZER", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Somut Olmayan Miras", "Risk ve Kırılganlık"]}, {"baslik": "İklim değişikliği ve çevresel etkiler bağlamında ahşap evlerin ekoturizm potansiyeli", "baslikTr": "", "yazar": "KETEVAN GOBECHIA", "danisman": "PROF. DR. MUSTAFA CAN", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Geleneksel / Yerel Mimari"]}, {"baslik": "İklim değişikliğinin bina enerji tüketimine etkisinin örnek yapı kabuğu parametreleri \ndeğişimi ile analizi", "baslikTr": "", "yazar": "MUSTAFA DEHMEN", "danisman": "PROF. DR. GÜLAY ZORER GEDİK", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Geleneksel / Yerel Mimari", "Enerji ve Karbon"]}, {"baslik": "Küresel iklim değişikliği: Aktörler, süreçler ve etkiler üzerinden bir inceleme", "baslikTr": "", "yazar": "SELMA ŞAHİN", "danisman": "PROF. DR. ZAFER AKBAŞ", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın"]}, {"baslik": "Çanakkale'de iklim değişikliğine karşı kentsel dayanıklılığın değerlendirilmesi", "baslikTr": "", "yazar": "ŞEYMA DİNÇ", "danisman": "DOÇ. DR. FAİZE SARIŞ", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "İklim stres etkenlerinin Niğde kırsal mimarisinde kullanılan ignimbirit taşı üzerindeki \netkilerinin değerlendirilmesi", "baslikTr": "", "yazar": "GİZEM ÖZAL CANPOLAT", "danisman": "PROF. DR. FAZİLET DUYGU SABAN ; \nPROF. DR. SEMİHA AKÇAÖZOĞLU", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Geleneksel / Yerel Mimari"]}, {"baslik": "Gümüşhane – Kelkit yöresi yüksek dağ ekosistemi ağaçlandırmalarının sürdürülebilir \normancılık ilkeleri ve iklim değişikliği senaryoları kullanılarak değerlendirilmesi", "baslikTr": "", "yazar": "NAZLI AK TÜTÜNCÜ", "danisman": "PROF. DR. HALİL BARIŞ ÖZEL", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Enhancing building resilience to climate change based on analysis of physical indicators:\n Çeliktepe case", "baslikTr": "", "yazar": "NASIM HEIDARI", "danisman": "PROF. DR. MUSTAFA ERKAN KARAGÜLER", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "Tomorrow's İstanbul: Adaptive urban flood mitigation planning for climate change-induced \nhydro- meteorological hazards", "baslikTr": "", "yazar": "BATUHAN GUGUK", "danisman": "PROF. DR. AZİME TEZER", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliğine uyum kapsamında biyoklimatik konfor koşullarındaki değişkenliğin \nyaylacılık faaliyetlerine etkisi: Feslikan Yaylası örneği", "baslikTr": "", "yazar": "GİZEM GEDİK MENEKŞE", "danisman": "PROF. DR. BEYZA USTAOĞLU", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj", "Risk ve Kırılganlık"]}, {"baslik": "İklim değişikliği ve kıyı kentlerinin Hamburg'un sele karşı dirençliliği açısından irdelenmesi", "baslikTr": "", "yazar": "MERVE ALKAN", "danisman": "PROF. DR. AHMET TERCAN", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Deniz Seviyesi ve Kıyı", "Sel ve Taşkın"]}, {"baslik": "Birleşmiş milletler taraflar konferansları (COP) kapsamında iklim değişikliği ve mekansal \nplanlama ilişkisi, Türkiye örneği", "baslikTr": "", "yazar": "HÜLYA TURAN", "danisman": "PROF. DR. ADEM ERDEM ERBAŞ", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Politika ve Anlaşmalar"]}, {"baslik": "İklim krizi bağlantılı afetler ekseninde kırsal tarımsal topluluklar: Antalya özelinde \nnitel bir analiz", "baslikTr": "", "yazar": "MERVE SUZAN ILIK", "danisman": "DOÇ. DR. CEREN UYSAL OĞUZ", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Göç ve Toplum", "Ekosistem ve Peyzaj"]}, {"baslik": "Kıyı kentlerinde iklim değişikliğine bağlı deniz seviyesi yükselme riskine karşı kentsel kıyı \nalan kullanımları için adaptasyon stratejileri: İzmir örneği", "baslikTr": "", "yazar": "ÇAĞLA ERCANLI", "danisman": "DOÇ. DR. GÖKÇEÇİÇEK SAVAŞIR", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Deniz Seviyesi ve Kıyı", "Sel ve Taşkın"]}, {"baslik": "Yapılı çevrede iklim değişikliğinin etkilerini azaltma ve uyum stratejilerinin araştırılması", "baslikTr": "", "yazar": "BÜŞRA AYDIN", "danisman": "PROF. DR. NİLÜFER TAŞ", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar", "Risk ve Kırılganlık"]}, {"baslik": "Küresel iklim krizi ve zorunlu göç: Bir sistematik literatür taraması", "baslikTr": "", "yazar": "MAHAMADOU HAIDARA", "danisman": "DOÇ. DR. MUNİSE TUBA AKTAŞ", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Göç ve Toplum"]}, {"baslik": "İklim değişikliğiyle mücadele kapsamında ekosistem servislerinin UA ve CBS olanaklarıyla \ndeğerlendirilmesi", "baslikTr": "", "yazar": "ELVAN BENGİ", "danisman": "PROF. DR. SAYE NİHAN ÇABUK", "yil": "2023", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Türkiye'nin taraf olduğu iklim anlaşmalarının karşılaştırmalı analizi ve olası etkileri", "baslikTr": "", "yazar": "FATMA MELTEM KARAMAN", "danisman": "DR. ÖĞR. ÜYESİ LEILA AKBARISHAHABI", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "İklim değişikliğine bağlı deniz seviyesi yükselmesinin kıyı kırılganlık analizi: Bursa örneği", "baslikTr": "", "yazar": "RAMAZAN BULDU", "danisman": "DOÇ. DR. TAYFUN SALİHOĞLU", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Deniz Seviyesi ve Kıyı", "Sel ve Taşkın"]}, {"baslik": "Meles deresi ve havzasının iklim değişikliğine yönelik peyzaj kırılganlığının irdelenmesi", "baslikTr": "", "yazar": "ILGAZ EKŞİ", "danisman": "PROF. DR. HAKAN DOYGUN ; \nDOÇ. DR. NURDAN ERDOĞAN", "yil": "2022", "tur": "Tez", "link": "", "temalar": ["Kuraklık ve Su", "Ekosistem ve Peyzaj"]}, {"baslik": "Bir kent planlama sorunu olarak iklim değişikliği ve vatandaş katılımlı planlama yöntemleri", "baslikTr": "", "yazar": "NERGİS MENEMENLİ GÖKÇEN", "danisman": "DR. ÖĞR. ÜYESİ BANU TOMRUK", "yil": "2021", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Göç ve Toplum"]}, {"baslik": "Küresel iklim değişikliğinin Diyarbakır kent Merkezi üzerinde etkilerinin araştırılması", "baslikTr": "", "yazar": "ZEMZEM KINIK", "danisman": "PROF. DR. ZEYNEL FUAT TOPRAK", "yil": "2020", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "The role of local governments in climate change adaptation: Achievements and barriers \nin the Turkish case", "baslikTr": "", "yazar": "GÜLİN ÖZDEMİR EROĞLU", "danisman": "PROF. DR. OSMAN BALABAN ; \nPROF. DR. AYŞEN YILMAZ", "yil": "2019", "tur": "Tez", "link": "", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "Stormwater management in cities as a climate change adaptation strategy: \nCase of Halkapınar district(İzmir,Turkey)", "baslikTr": "", "yazar": "ZEYNEP BALLAR", "danisman": "DR. ÖĞR. ÜYESİ NİCEL SAYGIN", "yil": "2019", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kuraklık ve Su"]}, {"baslik": "Architectural design for climate change mitigation and adaptation strategies in existing \nbuildings", "baslikTr": "", "yazar": "GİZEM AKKÖSE", "danisman": "DOÇ. DR. İPEK GÜRSEL DİNO ; \nYRD. DOÇ. DR. ÇAĞLA AKGÜL", "yil": "2019", "tur": "Tez", "link": "", "temalar": ["Geleneksel / Yerel Mimari", "Enerji ve Karbon"]}, {"baslik": "Kentsel alanda iklim değişikliği ile toplumsal temelli mücadele: Bir yöntem olarak kent \nbahçeleri", "baslikTr": "", "yazar": "DEVİN BAHÇECİ", "danisman": "DOÇ. DR. AYŞEGÜL YAKAR ÖNAL", "yil": "2019", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "An approach to the evaluation of vernacular settlements in hot dry climate in terms of \nthermal comfort: The case of Mardin", "baslikTr": "", "yazar": "İREM SÖZEN", "danisman": "PROF. DR. GÜL KOÇLAR ORAL", "yil": "2019", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Geleneksel / Yerel Mimari"]}, {"baslik": "İklim değişikliğinin yerleşik düzen,kentsel yapı üzerindeki etkileri ve çözüm önerileri", "baslikTr": "", "yazar": "VOLKAN ERKAN", "danisman": "YRD. DOÇ. DR. SELİM VELİOĞLU", "yil": "2008", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "İnsanliğin ekolojik krizi: Küresel iklim değişikliği örneği", "baslikTr": "", "yazar": "YİĞİT DOĞAN", "danisman": "DOÇ. DR. SEVİM BUDAK", "yil": "2008", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Ekosistem ve Peyzaj"]}, {"baslik": "Climate change and urban resilience: Vulnerability and risk assessment for İstanbul", "baslikTr": "", "yazar": "AYSUN AYGÜN", "danisman": "PROF. DR. TÜZİN BAYCAN", "yil": "2015", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Risk ve Kırılganlık"]}, {"baslik": "Türkiye ve dünya'da iklim değişikliği eylem planları", "baslikTr": "", "yazar": "REMZİ ANIL YAVUZ", "danisman": "PROF. DR. GÜLEDA ENGİN", "yil": "2015", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "Impacts of climate variability on physical and social environment: Study on adaptation \nprocess in bangladesh coastal region", "baslikTr": "", "yazar": "MOZHARUL ISLAM", "danisman": "PROF. DR. FATMA GÜLAY ARIKAN", "yil": "2016", "tur": "Tez", "link": "", "temalar": ["Deniz Seviyesi ve Kıyı", "Risk ve Kırılganlık"]}, {"baslik": "Türkiye için iklim değişikliğine karşı sektörel bazlı uyum faaliyetleri önerileri", "baslikTr": "", "yazar": "DENİZ TEKTEN", "danisman": "PROF. DR. AYŞE GÜL TANIK", "yil": "2016", "tur": "Tez", "link": "", "temalar": ["Risk ve Kırılganlık"]}, {"baslik": "The impacts of climate change and land use on the ecosystem structure and services of \nLake Beysehir", "baslikTr": "", "yazar": "TUBA BUCAK", "danisman": "PROF. DR. MERYEM BEKLİOĞLU ; \nDR. DENNIS TROLLE", "yil": "2017", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Kent düzeyinde iklim aksiyon planlama ve Bursa Büyükşehir Belediyesi eylem planının \nincelenmesi", "baslikTr": "", "yazar": "ZAFER KURTAR", "danisman": "PROF. DR. BARBAROS GÖNENÇGİL", "yil": "2017", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Politika ve Anlaşmalar"]}, {"baslik": "Antalya için iklim değişikliğine uyum stratejileri önerisi", "baslikTr": "", "yazar": "OYA TABANOĞLU", "danisman": "PROF. DR. HÜSEYİN MURAT ÇELİK", "yil": "2018", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar", "Risk ve Kırılganlık"]}, {"baslik": "Kent ağaçlarının iklim değişikliğindeki rolü: İstanbul Anadolu Yakası sahil parkları örneği", "baslikTr": "", "yazar": "TUĞSEM SÖNMEZ", "danisman": "DOÇ. DR. BİLAL ÇETİN", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Ekosistem ve Peyzaj"]}, {"baslik": "İklim değişikliğine bağlı kuraklık riskinin değerlendirilmesi: Eskişehir ili için iklim senaryoları", "baslikTr": "", "yazar": "MELİS BURCU CANARSLANLAR", "danisman": "DR. ÖĞR. ÜYESİ HAKAN UYGUÇGİL", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Kuraklık ve Su", "Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliğinin Seyhan Havzası su kaynakları üzerindeki olası risklerinin meteorolojik \nverilere dayalı olarak değerlendirilmesi", "baslikTr": "", "yazar": "SERPİL SİNAN", "danisman": "PROF. DR. MESUT BAŞIBÜYÜK", "yil": "2024", "tur": "Tez", "link": "", "temalar": ["Kuraklık ve Su", "Risk ve Kırılganlık"]}, {"baslik": "İklim değişikliğinden kaynaklı çevresel sorunların Adana tarımı üzerindeki risk analizi", "baslikTr": "", "yazar": "MUSTAFA KAAN ÇAKAN", "danisman": "PROF. DR. MESUT BAŞIBÜYÜK", "yil": "2020", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Ekosistem ve Peyzaj"]}, {"baslik": "İklim değişikliğinin Çukurova bölgesi su kaynakları üzerine olan etkilerinin değerlendirilmesi", "baslikTr": "", "yazar": "DURDANE KURT", "danisman": "PROF. DR. MESUT BAŞIBÜYÜK", "yil": "2020", "tur": "Tez", "link": "", "temalar": ["Kuraklık ve Su"]}, {"baslik": "Doğu akdeniz havzasında küresel iklim değişikliğinin rüzgar ve dalga iklimine etkisinin \nmodellenmesi", "baslikTr": "", "yazar": "İREM GÜMÜŞÇÜ", "danisman": "PROF. DR. YALÇIN YÜKSEL ; \nDOÇ. DR. CİHAN ŞAHİN", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Deniz Seviyesi ve Kıyı", "Sel ve Taşkın"]}, {"baslik": "Arazi kullanımı ve iklim değişikliğinin ekosistem hizmetleri üzerine etkilerinin \ndeğerlendirilmesi: İstanbul örneği", "baslikTr": "", "yazar": "EREN DAĞRA SÖKMEN", "danisman": "DOÇ. DR. ŞERİFE DOĞANAY YENER", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Ekosistem ve Peyzaj"]}, {"baslik": "Değişen iklim koşullarının şehirleşme açısından İstanbul'a yansımaları", "baslikTr": "", "yazar": "ERCAN TEKİN", "danisman": "PROF. DR. BARBAROS GÖNENÇGİL", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliği ile uyumlu enerji etkin bina ve yerleşme tasarımına yönelik bir yaklaşım", "baslikTr": "", "yazar": "EDA KÖSE MURATHAN", "danisman": "PROF. DR. GÜLTEN MANİOĞLU", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Geleneksel / Yerel Mimari", "Enerji ve Karbon"]}, {"baslik": "Integration of climate actions: assessing adaptation-mitigation interactions in Türkiye's \nclimate action plans", "baslikTr": "", "yazar": "BESTE LÖKER", "danisman": "PROF. DR. SERAP KAYASÜ", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar", "Enerji ve Karbon"]}, {"baslik": "Türkiye'de yerel yönetimlerin iklim değişikliğiyle mücadelede yetki ve görevleri", "baslikTr": "", "yazar": "NİLAY ŞİMŞEK", "danisman": "PROF. DR. SÜHEYLA SUZAN GÖKALP", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "Leveraging the vernacular architecture of old Sana'a as a strategy to mitigate climate change", "baslikTr": "", "yazar": "ALI HASAN QAIS", "danisman": "DOÇ. DR. AYHAN KARADAYI", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Geleneksel / Yerel Mimari", "Politika ve Anlaşmalar"]}, {"baslik": "İklim değişikliği politikalarının üniversitelerde kurumsallaşması: Hacettepe Üniversitesi örneği", "baslikTr": "", "yazar": "ESRA SARI", "danisman": "PROF. DR. ŞEFİKA ŞULE ERÇETİN", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar"]}, {"baslik": "Küresel iklim değişikliği politikalarına Türkiye'nin uyumu", "baslikTr": "", "yazar": "İREM GÖZE", "danisman": "PROF. DR. CELİL UĞUR ÖZGÖKER", "yil": "2026", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Politika ve Anlaşmalar"]}, {"baslik": "Ankara'nın enerji tüketiminin iklim değişikliği etki potansiyelinin belirlenmesi", "baslikTr": "", "yazar": "EBRU YALDIZ TÜRKER", "danisman": "PROF. DR. CENGİZ TÜRE ; DR. ÇAĞDAŞ SAZ", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Enerji ve Karbon"]}, {"baslik": "İklim değişikliğinin İstanbul'daki şehir turizmine ve kültür varlıklarına etkisi", "baslikTr": "", "yazar": "NİSA YARGICI", "danisman": "PROF. DR. BARBAROS GÖNENÇGİL", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "Küresel iklim krizi ile mücadelede bir planlama sorunsalı: kentsel yeşil dönüşüm ve yeşil \nsoylulaştırma", "baslikTr": "", "yazar": "EVŞEN YAMAN", "danisman": "PROF. DR. ZEYNEP ŞİRİN ENLİL", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliğine uyum sürecinde kentlerde sürdürülebilir su yönetim stratejisinin \ngeliştirilmesi: Bilecik (merkez) örneği", "baslikTr": "", "yazar": "SEVGİ AKKOY", "danisman": "PROF. DR. EDİP AVŞAR", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kuraklık ve Su", "Kentsel Dayanıklılık"]}, {"baslik": "İklim dirençli kent yaklaşımında yağmur suyu hasadı uygulamasının değerlendirilmesi: \nİstanbul ili zeytinburnu ilçesi örneği", "baslikTr": "", "yazar": "EDANUR ÖZTÜRK", "danisman": "PROF. DR. GÜLEDA ENGİN", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "Küresel iklim krizi ve yeşil dönüşüm: Kazakistan örneği", "baslikTr": "", "yazar": "DİLŞAD TAŞKIN KUVELOĞLU", "danisman": "DR. NAGEHAN ÜSTÜNDAĞ", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Enerji ve Karbon"]}, {"baslik": "İklim değişikliğinde kentsel hasar görebilirlik: İstanbul- Bağcılar örneği", "baslikTr": "", "yazar": "KÜBRA ALTINTAŞ", "danisman": "DR. ÖĞR. ÜYESİ CEYHAN KAHYA", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kentsel Dayanıklılık"]}, {"baslik": "İklim değişikliğinin su kaynakları etkisi", "baslikTr": "", "yazar": "SALAHALDEEN FARHAT", "danisman": "PROF. DR. SİNAN UYANIK", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kuraklık ve Su"]}, {"baslik": "Aşırı hava ve iklim olaylarına uyum sağlama ihtiyacının yerel iklim eylem planlarına entegre \nedilmesine yönelik bir model önerisi: Antalya ili uygulaması", "baslikTr": "", "yazar": "İSMAİL KAYA", "danisman": "PROF. DR. İSTEM KÖYMEN", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Politika ve Anlaşmalar", "Risk ve Kırılganlık"]}, {"baslik": "Sıcak iklim bölgelerinde kinetik gölgeleme elemanlarının tasarım süreçlerine dair kılavuz", "baslikTr": "", "yazar": "ESRA KAPLAN", "danisman": "PROF. DR. FİGEN BEYHAN", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Geleneksel / Yerel Mimari"]}, {"baslik": "İklim değişikliği ve sürdürülebilirlik ile ilgili enerji şirketlerinin alabileceği önlemler", "baslikTr": "", "yazar": "ESRA NUR KENDİRCİ", "danisman": "DR. ÖĞR. ÜYESİ FATMA DİDEM TUNÇEZ", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Enerji ve Karbon"]}, {"baslik": "İklim kriziyle mücadelede kentlerin rolü: Ankara Büyükşehir Belediyesi ve öne çıkan \nAvrupa kentlerinin karşılaştırılması", "baslikTr": "", "yazar": "NAZLIGÜL AKTAŞ TELMEN", "danisman": "DOÇ. DR. LEILA AKBARISHAHABI", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık"]}, {"baslik": "Yerelde iklim değişikliği azaltım ve uyum planlamaları: Karbon saydamlık projesi platformu \nüzerinden bir inceleme", "baslikTr": "", "yazar": "ÖZLEM KILIÇARSLAN", "danisman": "DOÇ. DR. ÇİĞDEM MORAL", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Kentsel Dayanıklılık", "Enerji ve Karbon"]}, {"baslik": "Geleneksel mimaride binaların sürdürülebilir tasarım kriterleri bağlamında değerlendirilmesi \nAntalya Kaleiçi evleri örneği", "baslikTr": "", "yazar": "MİNE AKTUNA", "danisman": "DOÇ. DR. SEDA TÖNÜK", "yil": "2007", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Geleneksel / Yerel Mimari"]}, {"baslik": "21. yüzyılda Anadolu geleneksel yeraltı su sistemlerinin su güvenliği ve sürdürülebilir \nkalkınma amaçları ile ilişkisi: Gaziantep örneği", "baslikTr": "", "yazar": "GAMZE ÖZMERTYURT BRUHN", "danisman": "PROF. DR. ZEYNEP GÜL ÜNAL", "yil": "2025", "tur": "Tez", "link": "", "temalar": ["Sel ve Taşkın", "Kuraklık ve Su"]}];
+
+const THEME_COLORS = {
+  "Kentsel Dayanıklılık":"#1f5673", "Sel ve Taşkın":"#2c8fb5", "Kuraklık ve Su":"#3aa0a0",
+  "Deniz Seviyesi ve Kıyı":"#1d7a8c", "Ekosistem ve Peyzaj":"#4c9a52", "Geleneksel / Yerel Mimari":"#8b5e34",
+  "Enerji ve Karbon":"#c98a3f", "Risk ve Kırılganlık":"#b3441e", "Politika ve Anlaşmalar":"#6a4c93",
+  "Göç ve Toplum":"#c2407a", "Somut Olmayan Miras":"#a0357a", "Kültürel Miras (Genel)":"#5a6570",
+  "Diğer Yaklaşımlar":"#9aa3ab"
+};
+const colorFor = t => THEME_COLORS[t] || "#9aa3ab";
+
+// Build nodes & links
+const themeSet = {};
+DATA.forEach(d=>d.temalar.forEach(t=>themeSet[t]=(themeSet[t]||0)+1));
+const themeNames = Object.keys(themeSet).sort((a,b)=>themeSet[b]-themeSet[a]);
+
+const nodes = [], links = [];
+const themeNode = {};
+themeNames.forEach(t=>{
+  const n={id:'T:'+t, type:'theme', label:t, count:themeSet[t], color:colorFor(t)};
+  themeNode[t]=n; nodes.push(n);
+});
+DATA.forEach((d,i)=>{
+  const primary = d.temalar[0];
+  const n={id:'R:'+i, type:'res', rec:d, color:colorFor(primary)};
+  nodes.push(n);
+  d.temalar.forEach((t,ti)=>{
+    links.push({source:'R:'+i, target:'T:'+t, primary: ti===0});
+  });
+});
+
+const svg = d3.select('#net');
+const stage = document.querySelector('.stage');
+let W = stage.clientWidth, H = stage.clientHeight;
+svg.attr('viewBox',[0,0,W,H]);
+const g = svg.append('g');
+
+const zoom = d3.zoom().scaleExtent([0.3,5]).on('zoom',e=>g.attr('transform',e.transform));
+svg.call(zoom).on('dblclick.zoom',null);
+
+const isMobile = window.matchMedia('(max-width:760px)').matches || ('ontouchstart' in window);
+
+// radius
+const rThemeScale = d3.scaleSqrt().domain([3, d3.max(themeNames,t=>themeSet[t])]).range([22,52]);
+const rTheme = t=>rThemeScale(themeSet[t]);
+const rRes = isMobile ? 5.5 : 4.2;
+
+const linkSel = g.append('g').attr('stroke-linecap','round')
+  .selectAll('line').data(links).join('line')
+  .attr('stroke', d=>colorFor(d.target.replace? d.target : ''))
+  .attr('stroke-opacity', d=>d.primary?0.28:0.12)
+  .attr('stroke-width', d=>d.primary?0.9:0.5);
+
+const nodeSel = g.append('g').selectAll('g').data(nodes).join('g')
+  .attr('class','node').style('cursor','pointer');
+
+const resG = nodeSel.filter(d=>d.type==='res');
+if(isMobile){
+  resG.append('circle').attr('class','hit')
+    .attr('r',rRes+8).attr('fill','transparent');
+}
+resG.append('circle')
+  .attr('r',rRes).attr('fill',d=>d.color).attr('fill-opacity',0.85)
+  .attr('stroke','#fff').attr('stroke-width',0.7);
+
+const themeG = nodeSel.filter(d=>d.type==='theme');
+themeG.append('circle')
+  .attr('r',d=>rTheme(d.label)).attr('fill','#fff')
+  .attr('stroke',d=>d.color).attr('stroke-width',2.4);
+
+const sim = d3.forceSimulation(nodes)
+  .force('link', d3.forceLink(links).id(d=>d.id).distance(d=>d.primary?(isMobile?30:38):(isMobile?46:60)).strength(d=>d.primary?0.7:0.18))
+  .force('charge', d3.forceManyBody().strength(d=>d.type==='theme'?(isMobile?-240:-340):(isMobile?-14:-22)))
+  .force('center', d3.forceCenter(W/2,H/2))
+  .force('collide', d3.forceCollide().radius(d=>d.type==='theme'?rTheme(d.label)+6:rRes+1.5))
+  .force('x', d3.forceX(W/2).strength(isMobile?0.06:0.03))
+  .force('y', d3.forceY(H/2).strength(isMobile?0.06:0.03));
+
+sim.on('tick',()=>{
+  linkSel.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+  nodeSel.attr('transform',d=>`translate(${d.x},${d.y})`);
+  themeG.select('.node-label')
+    .attr('font-size',d=>Math.max(9,Math.min(15,rTheme(d.label)*0.32)));
+});
+
+// Fit whole network into view once layout settles
+let fitted=false;
+function zoomToFit(pad){
+  const xs=nodes.map(n=>n.x), ys=nodes.map(n=>n.y);
+  const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+  const bw=maxX-minX||1, bh=maxY-minY||1;
+  const scale=Math.min((W-pad*2)/bw,(H-pad*2)/bh,1);
+  const tx=W/2-scale*(minX+maxX)/2, ty=H/2-scale*(minY+maxY)/2;
+  svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(tx,ty).scale(scale));
+}
+sim.on('end',()=>{ if(!fitted){ fitted=true; zoomToFit(isMobile?28:60); }});
+
+// theme labels (wrapped, after sim settles we keep them centered)
+themeG.each(function(d){
+  const r=rTheme(d.label);
+  const words=d.label.split(/[\s/]+/).filter(Boolean);
+  const lines=[]; let cur='';
+  words.forEach(w=>{ if((cur+' '+w).trim().length>11){lines.push(cur.trim()); cur=w;} else cur+=' '+w; });
+  if(cur.trim())lines.push(cur.trim());
+  const t=d3.select(this).append('text').attr('class','node-label').attr('text-anchor','middle')
+    .attr('font-size',Math.max(9,Math.min(14,r*0.3)));
+  const lh=1.05, startY=-((lines.length-1)/2)*lh;
+  lines.forEach((ln,i)=>t.append('tspan').attr('x',0).attr('dy',(i===0?startY:lh)+'em').text(ln));
+});
+
+// drag
+function drag(sim){
+  return d3.drag()
+    .clickDistance(6)
+    .on('start',(e,d)=>{if(!e.active)sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y;})
+    .on('drag',(e,d)=>{d.fx=e.x; d.fy=e.y;})
+    .on('end',(e,d)=>{if(!e.active)sim.alphaTarget(0); /* keep pinned */});
+}
+nodeSel.call(drag(sim));
+
+// tooltip
+const tip=document.getElementById('tip');
+function showTip(html,x,y){tip.innerHTML=html; tip.style.opacity=1; tip.style.left=(x+14)+'px'; tip.style.top=(y+14)+'px';}
+function hideTip(){tip.style.opacity=0;}
+
+let highlightedTheme=null;
+nodeSel.on('mouseenter',function(e,d){
+  if(isMobile) return;
+  if(d.type==='res'){
+    showTip('<b>'+esc(d.rec.baslik)+'</b><br>'+esc(d.rec.yazar||'')+(d.rec.yil?' · '+d.rec.yil:''), e.clientX, e.clientY);
+  } else {
+    showTip('<b>'+esc(d.label)+'</b><br>'+d.count+' kaynak', e.clientX, e.clientY);
+  }
+}).on('mousemove',function(e){if(!isMobile){tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px';}})
+  .on('mouseleave',hideTip)
+  .on('click',function(e,d){
+    e.stopPropagation();
+    hideTip();
+    if(d.type==='res'){ openPanel(d.rec); }
+    else { toggleTheme(d.label); }
+  });
+
+svg.on('click',()=>{ highlightTheme(null); document.querySelectorAll('.leg-item').forEach(l=>l.classList.remove('dim')); advToggle.classList.remove('open'); advPanel.classList.remove('open'); });
+
+// Legend
+const legend=document.getElementById('legend');
+themeNames.forEach(t=>{
+  const it=document.createElement('div'); it.className='leg-item';
+  it.innerHTML='<span class="dot" style="background:'+colorFor(t)+'"></span><span>'+t+'</span><span class="leg-count">'+themeSet[t]+'</span>';
+  it.onclick=(ev)=>{ev.stopPropagation(); toggleTheme(t); if(isMobile) legend.classList.remove('expanded');};
+  legend.appendChild(it);
+});
+
+// Mobile legend bottom-sheet toggle
+const legendToggle=document.getElementById('legendToggle');
+if(legendToggle){
+  legendToggle.addEventListener('click',(e)=>{e.stopPropagation(); legend.classList.toggle('expanded');});
+}
+function toggleTheme(t){ highlightTheme(highlightedTheme===t?null:t); }
+
+function highlightTheme(t){
+  highlightedTheme=t;
+  const items=[...document.querySelectorAll('.leg-item')];
+  items.forEach(it=>it.classList.toggle('dim', t && it.querySelector('span:nth-child(2)').textContent!==t));
+  applyFilters();
+}
+
+// ---- Detailed search / filter system ----
+const allTypes = [...new Set(DATA.map(d=>d.tur))].sort((a,b)=>{
+  const ca=DATA.filter(x=>x.tur===a).length, cb=DATA.filter(x=>x.tur===b).length; return cb-ca;
+});
+const TYPE_COLORS = {
+  "Tez":"#6a4c93","Makale":"#2c8fb5","Rapor":"#1f5673","Kitap":"#8b5e34",
+  "Kitap Bölümü":"#a06a2c","Politika Belgesi":"#b3441e","Konferans Bildirisi":"#3aa0a0","Diğer":"#5a6570"
+};
+const typeColor = t => TYPE_COLORS[t] || "#5a6570";
+const allYears = [...new Set(DATA.map(d=>parseInt(d.yil)).filter(y=>!isNaN(y)))].sort((a,b)=>a-b);
+
+let activeTypes = new Set(allTypes);   // hepsi seçili başlangıçta
+let yMin = allYears[0], yMax = allYears[allYears.length-1];
+let searchTerm = "";
+
+// Build type checkboxes
+const typeList = document.getElementById('typeList');
+allTypes.forEach(t=>{
+  const cnt = DATA.filter(d=>d.tur===t).length;
+  const lab = document.createElement('label'); lab.className='type-item';
+  lab.innerHTML = '<input type="checkbox" checked data-type="'+t+'">'+
+    '<span class="tdot" style="background:'+typeColor(t)+'"></span>'+
+    '<span class="tname">'+t+'</span><span class="tcount">'+cnt+'</span>';
+  lab.querySelector('input').addEventListener('change',function(){
+    if(this.checked) activeTypes.add(t); else activeTypes.delete(t);
+    applyFilters();
+  });
+  typeList.appendChild(lab);
+});
+function syncTypeChecks(){
+  typeList.querySelectorAll('input').forEach(i=>i.checked=activeTypes.has(i.dataset.type));
+}
+document.getElementById('typeAll').onclick=()=>{ activeTypes=new Set(allTypes); syncTypeChecks(); applyFilters(); };
+document.getElementById('typeNone').onclick=()=>{ activeTypes=new Set(); syncTypeChecks(); applyFilters(); };
+
+// Year selects
+const yearMin=document.getElementById('yearMin'), yearMax=document.getElementById('yearMax');
+allYears.forEach(y=>{ yearMin.add(new Option(y,y)); yearMax.add(new Option(y,y)); });
+yearMin.value=yMin; yearMax.value=yMax;
+yearMin.onchange=()=>{ yMin=+yearMin.value; if(yMin>yMax){yMax=yMin; yearMax.value=yMax;} applyFilters(); };
+yearMax.onchange=()=>{ yMax=+yearMax.value; if(yMax<yMin){yMin=yMax; yearMin.value=yMin;} applyFilters(); };
+
+// Search input
+document.getElementById('q').addEventListener('input',function(){
+  searchTerm=this.value.trim().toLocaleLowerCase('tr-TR'); applyFilters();
+});
+
+// Toggle adv panel
+const advToggle=document.getElementById('advToggle'), advPanel=document.getElementById('advPanel');
+advToggle.onclick=(e)=>{ e.stopPropagation(); advToggle.classList.toggle('open'); advPanel.classList.toggle('open'); };
+advPanel.onclick=(e)=>e.stopPropagation();
+document.getElementById('advClear').onclick=()=>{
+  activeTypes=new Set(allTypes); syncTypeChecks();
+  yMin=allYears[0]; yMax=allYears[allYears.length-1]; yearMin.value=yMin; yearMax.value=yMax;
+  searchTerm=""; document.getElementById('q').value="";
+  highlightedTheme=null;
+  document.querySelectorAll('.leg-item').forEach(l=>l.classList.remove('dim'));
+  applyFilters();
+};
+
+function recMatches(r){
+  if(!activeTypes.has(r.tur)) return false;
+  const y=parseInt(r.yil);
+  if(!isNaN(y) && (y<yMin || y>yMax)) return false;
+  if(searchTerm){
+    const hay=(r.baslik+' '+(r.baslikTr||'')+' '+r.yazar+' '+(r.danisman||'')+' '+r.tur).toLocaleLowerCase('tr-TR');
+    if(!hay.includes(searchTerm)) return false;
+  }
+  if(highlightedTheme && !r.temalar.includes(highlightedTheme)) return false;
+  return true;
+}
+
+function applyFilters(){
+  // active filter count badge
+  let n=0;
+  if(activeTypes.size!==allTypes.length) n++;
+  if(yMin!==allYears[0] || yMax!==allYears[allYears.length-1]) n++;
+  if(searchTerm) n++;
+  if(highlightedTheme) n++;
+  const badge=document.getElementById('advCount');
+  badge.textContent=n; badge.classList.toggle('show', n>0);
+
+  const visibleRes=new Set();
+  nodeSel.transition().duration(180).style('opacity',d=>{
+    if(d.type==='theme'){
+      // theme visible if any of its resources match, or no filters dim it
+      return (highlightedTheme && d.label!==highlightedTheme)?0.15:1;
+    }
+    const ok=recMatches(d.rec);
+    if(ok) visibleRes.add(d.id);
+    return ok?1:0.05;
+  });
+  nodeSel.style('pointer-events',d=> d.type==='theme'?'all':(recMatches(d.rec)?'all':'none'));
+
+  linkSel.transition().duration(180).attr('stroke-opacity',d=>{
+    const sId=(typeof d.source==='object')?d.source.id:d.source;
+    if(!visibleRes.has(sId)) return 0.02;
+    return d.primary?0.3:0.12;
+  });
+
+  document.getElementById('advResult').textContent=visibleRes.size+' / '+DATA.length+' kaynak';
+}
+applyFilters();
+
+// panel
+const panel=document.getElementById('panel');
+document.getElementById('panelClose').onclick=()=>panel.classList.remove('open');
+function openPanel(r){
+  const c=colorFor(r.temalar[0]);
+  document.getElementById('pTag').textContent=r.tur; document.getElementById('pTag').style.background=c;
+  document.getElementById('pYear').textContent=r.yil||'';
+  document.getElementById('pTitle').textContent=r.baslik;
+  let html='';
+  if(r.baslikTr && r.baslikTr!==r.baslik) html+=row('Türkçe Başlık', esc(r.baslikTr));
+  if(r.yazar) html+=row(r.tur==='Tez'?'Hazırlayan':'Yazar / Kurum', esc(r.yazar));
+  if(r.danisman) html+=row('Danışman', esc(r.danisman));
+  html+=row('İzlekler', r.temalar.map(t=>'<span class="theme-pill" style="border-color:'+colorFor(t)+'">'+t+'</span>').join(''));
+  if(r.link && /^https?:/i.test(r.link)) html+='<a class="panel-link" href="'+r.link.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener">Kaynağa git ↗</a>';
+  else if(r.link) html+=row('Not', esc(r.link));
+  document.getElementById('pBody').innerHTML=html;
+  panel.classList.add('open');
+}
+function row(k,v){return '<div class="panel-row"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';}
+function esc(s){return (s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+
+// resize / orientation change
+let rzT;
+function onResize(){
+  W=stage.clientWidth; H=stage.clientHeight; svg.attr('viewBox',[0,0,W,H]);
+  sim.force('center',d3.forceCenter(W/2,H/2));
+  sim.force('x',d3.forceX(W/2).strength(isMobile?0.06:0.03));
+  sim.force('y',d3.forceY(H/2).strength(isMobile?0.06:0.03));
+  sim.alpha(0.3).restart();
+  clearTimeout(rzT); rzT=setTimeout(()=>zoomToFit(isMobile?28:60), 600);
+}
+window.addEventListener('resize',onResize);
+window.addEventListener('orientationchange',()=>setTimeout(onResize,250));
+</script>
+</body>
+</html>
